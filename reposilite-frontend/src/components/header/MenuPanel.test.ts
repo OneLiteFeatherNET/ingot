@@ -183,7 +183,7 @@ describe('MenuPanel, signed in', () => {
     const name = accountTrigger(mounted.wrapper).find('[data-test="account-name"]')
     expect(name.text()).toBe('Alice Example')
     expect(name.classes(), 'screen reader only on narrow windows').toContain('sr-only')
-    expect(name.classes(), 'shown again from 900 pixels').toContain('min-[900px]:not-sr-only')
+    expect(name.classes(), 'shown again from 840 pixels').toContain('expanded:not-sr-only')
   })
 
   it('keeps Welcome, My account, Logout and the theme icon out of the bar', () => {

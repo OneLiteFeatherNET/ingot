@@ -158,7 +158,7 @@ const countText = computed(() => {
         class="flex flex-col gap-3 border-b border-outline-variant px-4 py-4"
         @submit.prevent="applyText"
       >
-        <div class="grid gap-3 min-[720px]:grid-cols-3">
+        <div class="grid gap-3 medium:grid-cols-3">
           <MdTextField
             v-model="draft.text"
             label="Search"
@@ -227,7 +227,7 @@ const countText = computed(() => {
 
       <div
         v-if="filters.range === 'custom'"
-        class="grid gap-3 border-b border-outline-variant px-4 py-4 min-[720px]:grid-cols-2"
+        class="grid gap-3 border-b border-outline-variant px-4 py-4 medium:grid-cols-2"
       >
         <MdTextField
           :model-value="isoToLocalInput(filters.from)"

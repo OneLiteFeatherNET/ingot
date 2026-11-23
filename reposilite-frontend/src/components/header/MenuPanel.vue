@@ -130,7 +130,7 @@ const onAccountSelect = (value: string): void => {
         <span
           data-test="account-name"
           :title="signedInName"
-          class="sr-only min-w-0 truncate md-label-large text-on-surface min-[900px]:not-sr-only"
+          class="sr-only min-w-0 truncate md-label-large text-on-surface expanded:not-sr-only"
         >{{ signedInName }}</span>
       </template>
       <template #header>

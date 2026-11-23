@@ -38,7 +38,7 @@ const attempts = computed(() => (props.event.occurrences > 1 ? `${props.event.oc
     class="border-b border-outline-variant px-4 py-3 last:border-b-0"
     data-ingot-component="audit-event-row"
   >
-    <div class="grid grid-cols-[minmax(0,1fr)] gap-x-4 gap-y-1 min-[720px]:grid-cols-[11rem_minmax(0,12rem)_minmax(0,13rem)_minmax(0,1fr)_auto] min-[720px]:items-center">
+    <div class="grid grid-cols-[minmax(0,1fr)] gap-x-4 gap-y-1 medium:grid-cols-[11rem_minmax(0,12rem)_minmax(0,13rem)_minmax(0,1fr)_auto] medium:items-center">
       <time
         :datetime="event.timestamp"
         class="md-body-small text-on-surface-variant"
@@ -89,7 +89,7 @@ const attempts = computed(() => (props.event.occurrences > 1 ? `${props.event.oc
         >{{ target }}</span>
       </div>
 
-      <div class="flex flex-wrap items-center justify-between gap-2 min-[720px]:justify-end">
+      <div class="flex flex-wrap items-center justify-between gap-2 medium:justify-end">
         <span
           class="md-label-medium"
           :class="event.success ? 'text-on-surface-variant' : 'text-error'"
