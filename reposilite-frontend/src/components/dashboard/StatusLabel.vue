@@ -51,7 +51,7 @@ defineProps({
       pixel lower than that middle. The nudge moves the dot onto the x-height centre.
     -->
     <span
-      class="relative top-[0.5px] size-2 shrink-0 rounded-full"
+      class="relative top-[0.5px] size-2 shrink-0 rounded-corner-full"
       :class="DOT_CLASSES[status]"
       aria-hidden="true"
     />

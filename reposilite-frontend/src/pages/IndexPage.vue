@@ -434,7 +434,7 @@ const activeLabel = computed((): string => pageLabel(section.value as string))
     -->
     <div
       v-if="hasNavigation"
-      class="pointer-events-none sticky top-16 z-20 hidden h-0 medium:block"
+      class="pointer-events-none sticky top-16 z-md-sticky hidden h-0 medium:block"
       aria-hidden="true"
     >
       <span class="pane-corner pane-corner-start" />
@@ -679,7 +679,7 @@ const activeLabel = computed((): string => pageLabel(section.value as string))
       </MdTransition>
       <div
         ref="barHost"
-        class="fixed inset-x-0 bottom-0 z-20 bg-surface-container pb-[env(safe-area-inset-bottom)] medium:hidden"
+        class="fixed inset-x-0 bottom-0 z-md-sticky bg-surface-container pb-[env(safe-area-inset-bottom)] medium:hidden"
       >
         <MdNavigationBar
           :items="barItems"
@@ -694,7 +694,7 @@ const activeLabel = computed((): string => pageLabel(section.value as string))
           </template>
         </MdNavigationBar>
       </div>
-      <div class="fixed inset-y-0 left-0 z-20 hidden w-24 medium:block">
+      <div class="fixed inset-y-0 left-0 z-md-sticky hidden w-24 medium:block">
         <MdNavigationRail
           class="h-full"
           :items="railItems"

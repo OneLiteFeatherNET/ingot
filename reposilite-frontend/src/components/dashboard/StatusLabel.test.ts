@@ -42,7 +42,7 @@ describe('StatusLabel', () => {
   it('draws the dot as an 8 by 8 pixel circle that does not shrink', () => {
     const classes = dotOf('good').className.split(' ')
 
-    expect(classes, 'the dot is size-2, which is 8px').toEqual(expect.arrayContaining(['size-2', 'shrink-0', 'rounded-full']))
+    expect(classes, 'the dot is size-2, which is 8px').toEqual(expect.arrayContaining(['size-2', 'shrink-0', 'rounded-corner-full']))
   })
 
   it('places the dot before the text and hides it from assistive technology', () => {

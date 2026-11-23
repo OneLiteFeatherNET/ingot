@@ -156,7 +156,7 @@ const labelClass = computed(() =>
         </svg>
         <span
           v-else-if="state === 'indeterminate'"
-          class="block h-[2px] w-2.5 rounded-full bg-current"
+          class="block h-[2px] w-2.5 rounded-corner-full bg-current"
           :class="markClass"
         />
       </span>

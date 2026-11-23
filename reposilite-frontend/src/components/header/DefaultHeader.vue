@@ -30,7 +30,7 @@ const { title } = usePlaceholders()
 
 <template>
   <header
-    class="sticky top-0 z-30 bg-surface-container text-on-surface xlarge:pr-4"
+    class="sticky top-0 z-md-top-bar bg-surface-container text-on-surface xlarge:pr-4"
     data-ingot-component="default-header"
   >
     <!-- The top app bar: the title on the left, the account actions on the right. -->
