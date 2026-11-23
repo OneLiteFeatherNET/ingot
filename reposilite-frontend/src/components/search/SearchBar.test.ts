@@ -60,6 +60,15 @@ describe('SearchBar', () => {
     expect(mountBar().find('button[aria-label="Clear search"]').exists()).toBe(false)
   })
 
+  it('draws the clear button as the shared icon button', () => {
+    const wrapper = mountBar({ modelValue: 'nightly' })
+
+    const clear = wrapper.get('button[aria-label="Clear search"]')
+
+    expect(clear.attributes('data-variant'), 'the clear button is the shared icon button').toBe('standard')
+    expect(clear.classes()).toContain('md-touch-target')
+  })
+
   it('clears the value through the clear button', async () => {
     const wrapper = mountBar({ modelValue: 'nightly' })
 

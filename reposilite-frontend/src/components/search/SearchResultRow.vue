@@ -18,6 +18,7 @@
 import { computed, useId } from 'vue'
 import { RouterLink } from 'vue-router'
 import MdButton from '../md/MdButton.vue'
+import MdIconButton from '../md/MdIconButton.vue'
 import { formatDay, formatSize, repositoryLabel } from './searchResult'
 import type { FilesState, SearchFile, SearchItem } from './searchResult'
 
@@ -141,16 +142,14 @@ const sourceOf = (file: SearchFile) => (file.origin === 'MIRROR'
         </div>
       </div>
 
-      <RouterLink
+      <MdIconButton
         v-if="item.browseLink"
         data-test="browse"
         :to="item.browseLink"
         :tabindex="tabbable ? undefined : -1"
         :aria-label="`Browse ${coordinates}`"
-        class="md-state-layer md-focus-ring md-touch-target relative inline-flex size-10 shrink-0 items-center justify-center rounded-corner-full text-on-surface-variant"
       >
         <svg
-          class="size-6"
           viewBox="0 0 24 24"
           fill="currentColor"
           aria-hidden="true"
@@ -158,7 +157,7 @@ const sourceOf = (file: SearchFile) => (file.origin === 'MIRROR'
         >
           <path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" />
         </svg>
-      </RouterLink>
+      </MdIconButton>
     </div>
 
     <div

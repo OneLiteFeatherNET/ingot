@@ -81,3 +81,20 @@ describe('StatTile status', () => {
     expect(dot.classes(), 'the warning status draws the warning dot').toContain('bg-warning')
   })
 })
+
+describe('StatTile link', () => {
+  it('draws the link to the source as an icon button that opens in a new tab', () => {
+    const wrapper = mount(StatTile, {
+      props: { label: 'Metrics', value: '1', link: 'https://example.test/metrics' }
+    })
+
+    const button = wrapper.get('a[aria-label="Metrics: open in a new tab"]')
+
+    expect(button.attributes('data-variant'), 'the link is the shared icon button').toBe('standard')
+    expect(button.classes(), 'the glyph is small, its hit area is not').toContain('h-6')
+    expect(button.classes()).toContain('md-touch-target')
+    expect(button.attributes('href')).toBe('https://example.test/metrics')
+    expect(button.attributes('target')).toBe('_blank')
+    wrapper.unmount()
+  })
+})

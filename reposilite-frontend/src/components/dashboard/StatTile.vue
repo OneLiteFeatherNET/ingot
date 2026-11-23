@@ -23,6 +23,7 @@ import { STATUS } from '../../store/palette'
 import LinkIcon from '../icons/LinkIcon.vue'
 import WarningIcon from '../icons/WarningIcon.vue'
 import MdCard from '../md/MdCard.vue'
+import MdIconButton from '../md/MdIconButton.vue'
 import StatusLabel from './StatusLabel.vue'
 
 // The reserved state names of the palette. Declared at runtime below, so the validator stays in place.
@@ -126,16 +127,16 @@ const meterClass = computed(() => {
       data-ingot-component="stat-tile"
     >
       <span class="md-label-large text-on-surface-variant">{{ label }}</span>
-      <a
+      <MdIconButton
         v-if="link"
         :href="link"
+        size="compact"
         target="_blank"
         rel="noopener"
-        class="md-state-layer md-focus-ring inline-flex size-6 items-center justify-center rounded-corner-full text-on-surface-variant hover:text-on-surface"
         :aria-label="`${label}: open in a new tab`"
       >
         <LinkIcon class="w-3" />
-      </a>
+      </MdIconButton>
     </div>
 
     <!--

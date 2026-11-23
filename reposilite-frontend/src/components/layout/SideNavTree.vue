@@ -19,6 +19,7 @@ import { computed, ref, useId, type PropType } from 'vue'
 import { RouterLink, useRouter, type RouteLocationRaw, type UseLinkReturn } from 'vue-router'
 import { matchEntries } from '../../navigation/adminFilter'
 import type { AdminGroup } from '../../navigation/registry'
+import MdTextField from '../md/MdTextField.vue'
 
 interface NavLink {
   key: string | undefined
@@ -130,19 +131,14 @@ const choose = (event: MouseEvent, navigate: UseLinkReturn['navigate'], link: Na
       role="search"
       class="flex flex-col gap-1 px-4"
     >
-      <label
-        :for="fieldId"
-        class="md-label-medium text-on-surface-variant"
-      >Find an administration page</label>
-      <input
-        :id="fieldId"
+      <MdTextField
         v-model="query"
+        label="Find an administration page"
         type="search"
         autocomplete="off"
-        class="min-w-0 rounded-corner-small border border-outline bg-surface px-3 py-2 md-body-medium text-on-surface [&::-webkit-search-cancel-button]:hidden"
         @keydown.escape="clearQuery"
         @keydown.enter.prevent="openFirstMatch"
-      >
+      />
       <p
         aria-live="polite"
         class="md-label-medium text-on-surface-variant"
