@@ -174,9 +174,9 @@ earlier ones.
 
 ## 5. Check (no commit)
 
-- [ ] 5.1 Run the unit suite through `heavy`: `npm test` in `reposilite-frontend`, with the anchor tests, the colour tests and the
+- [x] 5.1 Run the unit suite through `heavy`: `npm test` in `reposilite-frontend`, with the anchor tests, the colour tests and the
   window margin test. Verify: all pass, and no test in `src/components/md/` waits by time.
-- [ ] 5.2 Run the Playwright suites `accessibility.spec.js`, `navigation.spec.js` and `layout.spec.js` through `heavy` at 320 and 1280
+- [x] 5.2 Run the Playwright suites `accessibility.spec.js`, `navigation.spec.js` and `layout.spec.js` through `heavy` at 320 and 1280
   pixels. Verify: all pass, and the accessibility checks of the navigation, the fields and the sheet are green.
 - [ ] 5.3 Before and after screenshots at 320, 600 and 1440 pixels, in light and dark, for every pixel-identical swap: the side sheet
   close control, the field primitives other than the select (the select's 4px chevron move is accepted under question 6 and
@@ -187,7 +187,7 @@ earlier ones.
   are attached to the pull request.
 - [x] 5.5 Run `openspec validate add-md3-component-catalogue --strict` and `grep -rnP '\x{2014}|\x{2013}'` over the change directory and
   the changed DESIGN.md, the registry and the source files. Verify: the validation passes and the grep prints nothing.
-- [ ] 5.6 Grep `reposilite-frontend/src` and the plugin extension points for `CardMenu` and `selectTab`. Verify: the result is recorded
+- [x] 5.6 Grep `reposilite-frontend/src` and the plugin extension points for `CardMenu` and `selectTab`. Verify: the result is recorded
   in the pull request. The alias of task 3.20 is kept whatever the result is.
 - [ ] 5.7 Grep `reposilite-frontend/src/components/md/` for `<style` and for class-string props. Verify: no match.
 
