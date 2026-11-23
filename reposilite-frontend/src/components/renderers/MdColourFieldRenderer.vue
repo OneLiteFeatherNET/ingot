@@ -23,7 +23,7 @@ import { computed, defineComponent, ref } from 'vue'
 import MdTextField from '../md/MdTextField.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdButton from '../md/MdButton.vue'
-import { descriptionText } from './description'
+import { useFieldBinding } from './useFieldBinding'
 import { COLOUR_PROPERTIES, isColour } from '../../theme/settings'
 
 const COLOUR_HELP = 'Use a colour in the form #RRGGBB, such as #006a6a.'
@@ -49,13 +49,9 @@ export default defineComponent({
   props: rendererProps<ControlElement>(),
   setup(props) {
     const input = useVanillaControl(useJsonFormsControl(props))
-    const path = computed(() => input.control.value.path)
+    const { text: value, fieldProps, change, onInput } = useFieldBinding({ control: input.control, handleChange: input.handleChange })
     const picker = ref<HTMLInputElement | null>(null)
 
-    const value = computed(() => {
-      const data: unknown = input.control.value.data
-      return data === undefined || data === null ? '' : String(data)
-    })
     const hasValue = computed(() => value.value !== '')
     const valid = computed(() => isColour(value.value))
 
@@ -66,14 +62,11 @@ export default defineComponent({
 
     // An emptied field removes the value, so the property is left out of the saved settings. Anything
     // else is kept as typed, even when it is not a colour: the domain is then invalid and cannot be saved.
-    const onInput = (raw: string) => {
-      input.handleChange(path.value, raw === '' ? undefined : raw)
-    }
     const onPicked = (event: Event) => {
-      input.handleChange(path.value, (event.target as HTMLInputElement).value)
+      change((event.target as HTMLInputElement).value)
     }
     const clear = () => {
-      input.handleChange(path.value, undefined)
+      change(undefined)
     }
 
     // The picker is hidden behind the icon button, so the button opens it. Browsers that cannot
@@ -91,8 +84,8 @@ export default defineComponent({
     return {
       ...input,
       clear,
-      descriptionText,
       errorText,
+      fieldProps,
       hasValue,
       onInput,
       onPicked,
@@ -114,17 +107,13 @@ export default defineComponent({
     data-ingot-component="md-colour-field-renderer"
   >
     <MdTextField
-      :id="`${control.id}-input`"
+      v-bind="fieldProps"
       :model-value="value"
-      :label="control.label"
       variant="outlined"
       autocomplete="off"
       spellcheck="false"
-      :supporting-text="descriptionText(control.description)"
-      :error="!valid || Boolean(control.errors)"
+      :error="!valid || fieldProps.error"
       :error-text="errorText"
-      :disabled="!control.enabled"
-      :required="control.required"
       @update:model-value="onInput"
     >
       <template #leading-icon>

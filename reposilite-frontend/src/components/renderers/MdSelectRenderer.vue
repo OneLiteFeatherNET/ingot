@@ -20,7 +20,7 @@ import type { ControlElement, JsonSchema } from '@jsonforms/core'
 import { rendererProps, useJsonFormsControl } from '@jsonforms/vue'
 import { useVanillaControl } from '@dzikoysk/vue-vanilla'
 import { computed, defineComponent } from 'vue'
-import { descriptionText } from './description'
+import { useFieldBinding } from './useFieldBinding'
 import MdSelect from '../md/MdSelect.vue'
 
 /*
@@ -51,19 +51,16 @@ export default defineComponent({
     const input = useVanillaControl(useJsonFormsControl(props))
     const choices = computed(() => optionsOf(input.control.value.schema))
     const options = computed(() => choices.value.map(choice => ({ value: String(choice.value), label: choice.label })))
-    const selected = computed(() => {
-      const value: unknown = input.control.value.data
-      return value === undefined || value === null ? '' : String(value)
-    })
+    const { text: selected, fieldProps, change } = useFieldBinding({ control: input.control, handleChange: input.handleChange })
 
     const onSelect = (text: string) => {
       const match = choices.value.find(choice => String(choice.value) === text)
-      input.handleChange(input.control.value.path, match?.value)
+      change(match?.value)
     }
 
     return {
       ...input,
-      descriptionText,
+      fieldProps,
       options,
       selected,
       onSelect
@@ -75,15 +72,9 @@ export default defineComponent({
 <template>
   <MdSelect
     v-if="control.visible"
-    :id="`${control.id}-input`"
+    v-bind="fieldProps"
     :model-value="selected"
-    :label="control.label"
     :options="options"
-    :supporting-text="descriptionText(control.description)"
-    :error="Boolean(control.errors)"
-    :error-text="control.errors || ''"
-    :disabled="!control.enabled"
-    :required="control.required"
     @update:model-value="onSelect"
   />
 </template>

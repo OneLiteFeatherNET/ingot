@@ -9,10 +9,10 @@
       :model-value="String(shownIndex)"
       :label="control.label || 'Variants'"
       :options="variantOptions"
-      :supporting-text="descriptionText(control.description)"
-      :error="Boolean(control.errors)"
-      :error-text="control.errors || ''"
-      :disabled="!control.enabled"
+      :supporting-text="fieldProps.supportingText"
+      :error="fieldProps.error"
+      :error-text="fieldProps.errorText"
+      :disabled="fieldProps.disabled"
       @update:model-value="onVariantSelected"
     />
     <div
@@ -93,7 +93,7 @@ import MdDialogActions from '../md/MdDialogActions.vue'
 import MdSelect from '../md/MdSelect.vue'
 import isEqual from 'lodash/isEqual'
 import isPlainObject from 'lodash/isPlainObject'
-import { descriptionText } from './description'
+import { useFieldBinding } from './useFieldBinding'
 import { createEntryValue } from './util'
 
 /*
@@ -191,6 +191,7 @@ export default defineComponent({
   setup(props) {
     const input = useJsonFormsOneOfControl(props)
     const vanilla = useVanillaControl(input)
+    const { fieldProps, change } = useFieldBinding({ control: input.control, handleChange: input.handleChange })
     const jsonforms = inject<JsonFormsSubStates>('jsonforms')
 
     if (!jsonforms) {
@@ -246,7 +247,7 @@ export default defineComponent({
 
     const switchTo = (index: number) => {
       pendingIndex.value = null
-      input.handleChange(jsonformsControl.value.path, defaultValueOf(branches.value[index]))
+      change(defaultValueOf(branches.value[index]))
     }
 
     const onVariantSelected = (value: string) => {
@@ -295,7 +296,7 @@ export default defineComponent({
       cancelSwitch,
       confirmSwitch,
       onDialogUpdate,
-      descriptionText
+      fieldProps
     }
   }
 })

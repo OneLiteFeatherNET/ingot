@@ -28,7 +28,7 @@ export interface FieldControl {
   enabled: boolean
   required?: boolean
   data?: string | number | boolean | null
-  schema?: { type?: string }
+  schema?: { type?: string | string[] }
 }
 
 export interface FieldBindingInput {
@@ -44,7 +44,7 @@ export interface FieldBindingInput {
  */
 export const useFieldBinding = ({ control, handleChange }: FieldBindingInput) => {
   const path = computed(() => control.value.path)
-  const numeric = computed(() => ['number', 'integer'].includes(control.value.schema?.type ?? ''))
+  const numeric = computed(() => ['number', 'integer'].includes(control.value.schema?.type as string))
 
   const text = computed(() => {
     const data = control.value.data

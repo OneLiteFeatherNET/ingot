@@ -21,7 +21,7 @@ import { rendererProps, useJsonFormsControl } from '@jsonforms/vue'
 import { useVanillaControl } from '@dzikoysk/vue-vanilla'
 import { computed, defineComponent } from 'vue'
 import MdChipInput from '../md/MdChipInput.vue'
-import { descriptionText } from './description'
+import { useFieldBinding } from './useFieldBinding'
 import { validateTag } from '../../store/maven/repositories'
 
 /*
@@ -43,7 +43,7 @@ export default defineComponent({
   props: rendererProps<ControlElement>(),
   setup(props) {
     const input = useVanillaControl(useJsonFormsControl(props))
-    const path = computed(() => input.control.value.path)
+    const { fieldProps, change } = useFieldBinding({ control: input.control, handleChange: input.handleChange })
 
     const tags = computed<string[]>(() => {
       const data: unknown = input.control.value.data
@@ -54,12 +54,12 @@ export default defineComponent({
 
     // An empty list stays an empty list: removing the last chip must not drop the property.
     const onChange = (next: string[]) => {
-      input.handleChange(path.value, next)
+      change(next)
     }
 
     return {
       ...input,
-      descriptionText,
+      fieldProps,
       maxItems,
       onChange,
       suggestions,
@@ -76,13 +76,13 @@ export default defineComponent({
     :id="`${control.id}-input`"
     :model-value="tags"
     :label="control.label || 'Tags'"
-    :supporting-text="descriptionText(control.description)"
-    :error="Boolean(control.errors)"
-    :error-text="control.errors || ''"
+    :supporting-text="fieldProps.supportingText"
+    :error="fieldProps.error"
+    :error-text="fieldProps.errorText"
     :suggestions="suggestions"
     :validate="validateTag"
     :max-items="maxItems"
-    :disabled="!control.enabled"
+    :disabled="fieldProps.disabled"
     @update:model-value="onChange"
   />
 </template>
