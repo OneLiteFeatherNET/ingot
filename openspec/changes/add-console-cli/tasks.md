@@ -87,7 +87,7 @@ Groups 2 and 3 are merged on `main` (#412, #427, #434). Their tasks stay as the 
   `reposilite-frontend/src/components/console/ConsoleView.vue` with the socket client, completion, the confirmation dialog, structured
   results and the connection state. Keep the ANSI converter and the scroll helpers. Verify: 5.1 to 5.3 are green, the frontend tests and
   build pass, and the dashboard end-to-end tests (`dashboard-e2e-tests`) are updated where they assume SSE.
-- [ ] 5.5 `test(ui)`: extend the dashboard end-to-end test to run `status` over the socket and to decline a `token-revoke` confirmation,
+- [x] 5.5 `test(ui)`: extend the dashboard end-to-end test to run `status` over the socket and to decline a `token-revoke` confirmation,
   run through `heavy`. Verify: the scenario passes against a server started by the test, and the token is still valid afterwards.
 - [ ] 5.6 Code pull request, title `feat(ui): run the dashboard console as a web repl`. Same description rules as 4.9.
 
