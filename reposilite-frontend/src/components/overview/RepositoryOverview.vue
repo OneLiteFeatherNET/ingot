@@ -527,13 +527,13 @@ const setShowDetails = (value: boolean) => {
             v-if="repositories.length > 0 && filtersActive"
             class="flex flex-wrap items-center gap-2"
           >
-            <RouterLink
+            <MdButton
               v-if="artifactSearchText !== ''"
+              variant="text"
               :to="{ name: 'search', query: { q: artifactSearchText } }"
-              class="md-state-layer md-focus-ring inline-flex h-10 items-center rounded-corner-full px-3 md-label-large text-primary no-underline"
             >
               Search artifacts for {{ artifactSearchText }}
-            </RouterLink>
+            </MdButton>
             <MdButton
               variant="text"
               type="button"

@@ -242,9 +242,20 @@ describe('AdministrationFrame Sections sheet', () => {
 
     const button = sectionsButton(wrapper)
     expect(button, 'the Sections button is drawn').toBeDefined()
-    expect(button.classes(), 'hidden below 600 pixels').toContain('hidden')
-    expect(button.classes(), 'shown from the 600 pixel breakpoint').toContain('medium:inline-flex')
-    expect(button.classes(), 'a 48 pixel target').toContain('min-h-12')
+    const slot = button.element.parentElement!.classList
+    expect(slot.contains('hidden'), 'hidden below 600 pixels').toBe(true)
+    expect(slot.contains('medium:inline-flex'), 'shown from the 600 pixel breakpoint').toBe(true)
+    expect(button.classes(), 'a 40 pixel body').toContain('h-10')
+    expect(button.classes(), 'a 48 pixel hit area').toContain('md-touch-target')
+    expect(button.classes(), 'the old 48 pixel body is gone').not.toContain('min-h-12')
+  })
+
+  it('draws the related page shortcuts as text buttons with a 48 pixel touch target', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit', shortcuts: [{ label: 'Audit log', to: { name: 'audit' } }] })
+
+    const link = wrapper.get('[aria-label="Related pages"] a')
+    expect(link.attributes('data-variant'), 'a text button').toBe('text')
+    expect(link.classes(), 'a 48 pixel hit area').toContain('md-touch-target')
   })
 
   it('draws no Sections button on wide widths, where the tree is beside the page', async () => {

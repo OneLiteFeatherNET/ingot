@@ -20,6 +20,7 @@ import { RouterLink, type RouteLocationRaw } from 'vue-router'
 import SideNavLayout from './SideNavLayout.vue'
 import SideNavTree from './SideNavTree.vue'
 import AdministrationTrail from './AdministrationTrail.vue'
+import MdButton from '../md/MdButton.vue'
 import MdSideSheet from '../md/MdSideSheet.vue'
 import MdPage from '../md/MdPage.vue'
 import MdPageHeader from '../md/MdPageHeader.vue'
@@ -200,50 +201,47 @@ const sheetOpen = ref(false)
             v-if="showsSections || shortcuts.length > 0 || $slots.actions"
             #actions
           >
-            <button
+            <span
               v-if="showsSections"
-              type="button"
-              aria-haspopup="dialog"
-              class="md-state-layer md-focus-ring relative hidden min-h-12 items-center gap-2 rounded-corner-full px-4 md-label-large text-primary medium:inline-flex"
-              @click="sheetOpen = true"
+              class="hidden medium:inline-flex"
             >
-              <svg
-                class="size-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-                aria-hidden="true"
+              <MdButton
+                variant="text"
+                aria-haspopup="dialog"
+                @click="sheetOpen = true"
               >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              </svg>
-              Sections
-            </button>
+                <template #icon>
+                  <svg
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M4 6h16M4 12h16M4 18h16"
+                    />
+                  </svg>
+                </template>
+                Sections
+              </MdButton>
+            </span>
             <nav
               v-if="shortcuts.length > 0"
               aria-label="Related pages"
               class="flex flex-wrap items-center gap-2"
             >
-              <RouterLink
+              <MdButton
                 v-for="shortcut in shortcuts"
                 :key="shortcut.label"
-                v-slot="{ href, navigate }"
+                variant="text"
                 :to="shortcut.to"
-                custom
               >
-                <a
-                  :href="href"
-                  class="md-state-layer md-focus-ring md-label-large relative inline-flex min-h-10 items-center rounded-corner-full px-3 text-primary no-underline"
-                  @click="navigate"
-                >
-                  {{ shortcut.label }}
-                </a>
-              </RouterLink>
+                {{ shortcut.label }}
+              </MdButton>
             </nav>
             <slot name="actions" />
           </template>

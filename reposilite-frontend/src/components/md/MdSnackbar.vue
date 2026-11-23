@@ -18,6 +18,8 @@
 import { computed, inject } from 'vue'
 import { SNACKBAR_QUEUE_KEY, snackbar as sharedQueue } from '../../store/snackbar'
 import MdTransition from './MdTransition.vue'
+import MdButton from './MdButton.vue'
+import MdIconButton from './MdIconButton.vue'
 
 /*
  * Material Design 3 snackbar. It shows the head of a notification queue and nothing else:
@@ -51,18 +53,19 @@ const isError = computed(() => current.value?.tone === 'error')
         class="pointer-events-auto flex min-h-12 w-full max-w-md-snackbar items-center gap-2 rounded-corner-extra-small bg-inverse-surface py-2 pr-2 pl-4 text-inverse-on-surface shadow-elevation-3 md-body-medium"
       >
         <span class="min-w-0 flex-1 break-words py-1">{{ current.message }}</span>
-        <button
+        <MdButton
           v-if="current.action"
-          type="button"
-          class="md-state-layer md-focus-ring inline-flex min-h-12 shrink-0 items-center rounded-corner-full px-3 text-inverse-primary md-label-large"
+          variant="text"
+          inverse
+          inset="dense"
+          class="shrink-0"
           @click="queue.runAction(current.id)"
         >
           {{ current.action.label }}
-        </button>
-        <button
-          type="button"
+        </MdButton>
+        <MdIconButton
+          inverse
           aria-label="Dismiss notification"
-          class="md-state-layer md-focus-ring inline-flex size-12 shrink-0 items-center justify-center rounded-corner-full text-inverse-on-surface [&>svg]:size-6"
           @click="queue.dismiss(current.id)"
         >
           <svg
@@ -75,7 +78,7 @@ const isError = computed(() => current.value?.tone === 'error')
               d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z"
             />
           </svg>
-        </button>
+        </MdIconButton>
       </div>
     </MdTransition>
   </div>

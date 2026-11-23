@@ -15,7 +15,7 @@
   -->
 
 <script setup lang="ts">
-import { RouterLink } from 'vue-router'
+import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 import { ACCESS_DOMAINS } from './accessDomains'
 
@@ -55,12 +55,12 @@ const entry = () => ACCESS_DOMAINS[props.domain]
           v-for="link in entry().links"
           :key="link.name"
         >
-          <RouterLink
+          <MdButton
+            variant="outlined"
             :to="{ name: link.name }"
-            class="md-state-layer md-focus-ring relative inline-flex min-h-10 items-center rounded-corner-full border border-outline-variant px-4 md-label-large text-primary no-underline hover:underline"
           >
             {{ link.label }}
-          </RouterLink>
+          </MdButton>
         </li>
       </ul>
     </MdCard>

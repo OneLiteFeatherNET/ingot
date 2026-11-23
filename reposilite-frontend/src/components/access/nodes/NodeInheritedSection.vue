@@ -57,7 +57,7 @@ const regionId = `inherited-${useId()}`
   >
     <button
       type="button"
-      class="md-state-layer md-focus-ring relative inline-flex min-h-12 w-fit items-center gap-2 rounded-corner-medium px-3 md-title-small text-on-surface"
+      class="md-state-layer md-focus-ring md-touch-target relative inline-flex min-h-10 w-fit items-center gap-2 rounded-corner-medium px-3 md-title-small text-on-surface"
       :aria-expanded="open ? 'true' : 'false'"
       :aria-controls="regionId"
       data-test="inherited-toggle"

@@ -208,7 +208,7 @@ const submit = () => {
         >
           <button
             type="button"
-            class="md-state-layer md-focus-ring relative flex min-h-12 w-full flex-col items-start justify-center rounded-corner-small px-3 py-2 text-left"
+            class="md-state-layer md-focus-ring md-touch-target relative flex min-h-10 w-full flex-col items-start justify-center rounded-corner-small px-3 py-2 text-left"
             data-test="template-option"
             @click="choose(template)"
           >
