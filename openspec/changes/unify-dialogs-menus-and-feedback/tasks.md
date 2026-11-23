@@ -157,8 +157,14 @@ here.
 - [x] 7.1 `fix(ui)`: remove `SCRIM_STYLE` from `settings/dialog.js` once nothing imports it (last importer: `RepositoryWizard.vue`
   or `SettingsReviewSheet.vue`, whichever area migrates last), and delete the file if it holds nothing else. Verify:
   `grep -rn SCRIM_STYLE reposilite-frontend/src` finds nothing, and the frontend tests pass.
-- [ ] 7.2 `fix(ui)`: remove any migrated file that the `add-ui-style-gate` baseline still lists, and confirm the baseline has no new
+- [x] 7.2 `fix(ui)`: remove any migrated file that the `add-ui-style-gate` baseline still lists, and confirm the baseline has no new
   entry. Verify: the style gate passes with the baseline as shrunk.
+  Evidence (decision 313): no removable entry of a migrated file remains, so the baseline stays as it is and gains no entry. The
+  remaining entries, checked on main: `MdDialog.vue` `max-h-[90dvh]` (arbitrary-value) and `MdSnackbar.vue`
+  `medium:left-[calc(var(--app-rail-width,0px)+1.5rem)]` (arbitrary-value) need new tokens; `FailuresSheet.vue` `text-xs` and
+  `leading-5` (non-md3-default) belong to the `font-mono` code text that waits on decision 274; `SettingsView.vue`
+  `settings-view` and `settings-save-bar` (class-token) are hook classes kept per decision 299; `SettingsReviewSheet.vue`
+  `added` and `removed` (class-token) are false positives, being the `ChangeKind` values in script and class bindings, not classes.
 
 
 ## 8. Check, no commit
