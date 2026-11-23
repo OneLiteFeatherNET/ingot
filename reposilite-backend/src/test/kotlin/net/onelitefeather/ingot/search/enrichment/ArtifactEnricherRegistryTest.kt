@@ -144,6 +144,19 @@ internal class ArtifactEnricherRegistryTest {
     }
 
     @Test
+    fun `a declaration keeps its label and defaults it to the key`() {
+        val registry = registry()
+
+        registry.register(FakeEnricher(id = "minecraft-portal", declaredAttributes = listOf(
+            AttributeDeclaration(key = "minecraft-portal.loader", filterable = true, facetable = true, sortable = false, label = "Loader"),
+            AttributeDeclaration(key = "minecraft-portal.name", filterable = true, facetable = true, sortable = false),
+        )))
+
+        assertThat(registry.catalogue().mapValues { it.value.label }).`as`("labels of the catalogue")
+            .containsExactly(entry("minecraft-portal.loader", "Loader"), entry("minecraft-portal.name", "minecraft-portal.name"))
+    }
+
+    @Test
     fun `a declaration outside the enricher namespace is refused and the warning names the key and the class`() {
         val registry = registry()
         val own = AttributeDeclaration(key = "minecraft-portal.loader", filterable = true, facetable = true, sortable = false)
