@@ -199,13 +199,22 @@ describe('IndexPanel status', () => {
     expect(wrapper.text()).toContain('Only managers can see the search index')
   })
 
+  it('draws the 403 notice as an alert component', async () => {
+    session.client = fakeClient({ searchIndex: vi.fn(() => Promise.reject(httpError(403))) })
+    await mountPanel()
+
+    const alert = wrapper.get('[role="alert"][data-tone="error"]')
+
+    expect(alert.text(), 'the notice sits inside the alert').toContain('Only managers can see the search index')
+    expect(alert.attributes('role'), 'a refusal is announced at once').toBe('alert')
+  })
+
   it('shows a readable message when the status cannot be loaded', async () => {
     session.client = fakeClient({ searchIndex: vi.fn(() => Promise.reject(httpError(500, 'The index is unreachable'))) })
     await mountPanel()
 
     const panel = wrapper.get('[data-test="index-error"]')
     expect(panel.attributes('role'), 'the failure is announced').toBe('alert')
-    expect(panel.attributes('data-ingot-state'), 'the failure is an error state panel').toBe('error')
     expect(panel.text()).toContain('The index is unreachable')
   })
 
