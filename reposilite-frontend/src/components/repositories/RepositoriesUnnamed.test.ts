@@ -87,7 +87,7 @@ const buttonLabelled = (label: string) => wrapper.findAll('button').find(button 
 // The Actions menu is teleported to the body: its items are read from the document, after the row's button opened it.
 const menuItemLabelled = (label: string) => document.querySelector<HTMLElement>(`[role="menu"] [aria-label="${label}"]`)!
 const openActionsOf = async (name: string) => {
-  buttonLabelled(`Actions for ${name}`).trigger('click')
+  await buttonLabelled(`Actions for ${name}`).trigger('click')
   await flushPromises()
 }
 const sortButton = (label: string) => wrapper.findAll('thead th').find(header => header.text().startsWith(label))!.find('button')
@@ -118,7 +118,7 @@ describe('the repositories page with an entry that has no id', () => {
 
     const input = wrapper.find<HTMLInputElement>('input[type="search"], input[type="text"]')
     input.element.value = 'snap'
-    input.trigger('input')
+    await input.trigger('input')
     await flushPromises()
 
     expect(rowHeaders(), 'the filter keeps only the matching repository').toEqual(['snapshots'])

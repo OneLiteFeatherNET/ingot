@@ -96,7 +96,7 @@ describe('the repositories page keyboard and screen reader contract', () => {
 
     expect(positive(), 'the list has no positive tabindex').toEqual([])
 
-    wrapper.findAll('button').find(button => button.text() === 'Actions for releases')!.trigger('click')
+    await wrapper.findAll('button').find(button => button.text() === 'Actions for releases')!.trigger('click')
     await flushPromises()
     expect(positive(), 'the open Actions menu has no positive tabindex').toEqual([])
 
@@ -165,7 +165,7 @@ describe('the repositories page keyboard and screen reader contract', () => {
 
     const input = wrapper.find<HTMLInputElement>('input[type="search"], input[type="text"]')
     input.element.value = 'snap'
-    input.trigger('input')
+    await input.trigger('input')
     await flushPromises()
 
     const counts = () => wrapper.findAll('[role="status"]').filter(region => region.text().includes('repositories shown'))
