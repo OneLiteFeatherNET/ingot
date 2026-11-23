@@ -21,6 +21,7 @@
  * DESIGN.md next to package.json.
  */
 @import "tailwindcss";
+@import "../node_modules/vue-final-modal/dist/style.css" layer(base);
 @import "./styles/md3/color.css";
 @import "./styles/md3/typography.css";
 @import "./styles/md3/shape-elevation-motion.css";

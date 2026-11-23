@@ -402,8 +402,9 @@ onBeforeUnmount(() => {
             :key="option.value"
             role="option"
             :aria-selected="index === selectedIndex ? 'true' : 'false'"
-            class="md-state-layer relative flex min-h-12 cursor-pointer items-center gap-3 px-4 md-label-large"
-            :class="[index === selectedIndex ? 'text-primary' : 'text-on-surface', index === active ? 'md-state-focus!' : '']"
+            class="md-state-layer data-active:md-state-focus relative flex min-h-12 cursor-pointer items-center gap-3 px-4 md-label-large"
+            :class="index === selectedIndex ? 'text-primary' : 'text-on-surface'"
+            :data-active="index === active ? '' : undefined"
             @click="chooseIndex(index)"
           >
             <span class="flex size-6 shrink-0 items-center justify-center">

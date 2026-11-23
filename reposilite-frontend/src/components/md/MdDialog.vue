@@ -158,7 +158,7 @@ const onKeydown = (event: KeyboardEvent) => {
   <VueFinalModal
     :model-value="modelValue"
     class="z-md-dialog flex items-center justify-center"
-    overlay-class="bg-scrim/md-scrim!"
+    overlay-class="bg-scrim/md-scrim"
     :overlay-transition="SCRIM_TRANSITION"
     :content-class="contentClass"
     :content-transition="PANEL_TRANSITION"

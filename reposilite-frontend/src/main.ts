@@ -24,7 +24,6 @@ import { loadFrontendSettings } from './store/placeholders'
 import { applyAppearance } from './store/appearance'
 
 import './style.css'
-import 'vue-final-modal/style.css'
 
 const app = createApp(App as Component)
 
