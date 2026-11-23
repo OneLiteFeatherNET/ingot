@@ -464,6 +464,17 @@ describe('SystemInfoView factory reset', () => {
 })
 
 describe('SystemInfoView layout of the cards', () => {
+  it('draws the key and value rows of the overview blocks with the shared key value list', async () => {
+    const wrapper = await mountView(withInfo())
+    await flushPromises()
+
+    const overview = panelsOf(wrapper)[0]
+    expect(overview.findAll('[data-test="key-value-row"]').length, 'the Ingot, Java, OS, database and cluster rows').toBeGreaterThanOrEqual(1)
+    for (const term of overview.findAll('dt')) {
+      expect(term.classes(), `the label "${term.text()}" uses the label role`).toContain('md-label-large')
+    }
+  })
+
   it('gives every card and every value cell a min-w-0, so a long value cannot push its card wider', async () => {
     const wrapper = await mountView(withInfo())
     await flushPromises()
@@ -477,12 +488,12 @@ describe('SystemInfoView layout of the cards', () => {
     }
   })
 
-  it('wraps a value anywhere it does not fit, so an unbroken hostname or instance name stays inside its card', async () => {
+  it('wraps a value where it does not fit, so an unbroken hostname or instance name stays inside its card', async () => {
     const wrapper = await mountView(withInfo())
     await flushPromises()
 
     for (const value of panelsOf(wrapper)[0].findAll('dd')) {
-      expect(value.classes(), `the value "${value.text()}" wraps anywhere`).toContain('wrap-anywhere')
+      expect(value.classes(), `the value "${value.text()}" wraps at a break`).toContain('wrap-break-word')
     }
   })
 
