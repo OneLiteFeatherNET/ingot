@@ -86,7 +86,7 @@ PR title: `refactor(javadoc): move the javadoc viewer into its own javadoc-plugi
   form, so the unit tests that stay in the backend see them (design D7). Add `!reposilite-plugins/javadoc-plugin` to `.dockerignore`. Remove the run configuration
   `.run/Build javadoc-plugin to test workspace [javadoc-plugin _ clean build].run.xml` (question 6). Verify:
   `heavy ./gradlew :reposilite-backend:shadowJar --max-workers=2` runs and the module configures.
-- [ ] 3.3 `refactor(javadoc)`: `git mv` the sources of `reposilite-backend/src/main/kotlin/com/reposilite/javadocs/` into the module and the
+- [x] 3.3 `refactor(javadoc)`: `git mv` the sources of `reposilite-backend/src/main/kotlin/com/reposilite/javadocs/` into the module and the
   integration tests of `reposilite-backend/src/integration/kotlin/com/reposilite/javadocs/` into its integration source set. The unit tests
   of `reposilite-backend/src/test/kotlin/com/reposilite/javadocs/` stay where they are (design D7, question Q112). Remove the service entry
   from `reposilite-backend/src/main/resources/META-INF/services/`, and make public exactly the declarations that the exception of design D2
@@ -96,7 +96,7 @@ PR title: `refactor(javadoc): move the javadoc viewer into its own javadoc-plugi
   `heavy ./gradlew :reposilite-backend:test --tests 'com.reposilite.javadocs.*' --max-workers=2` passes with no test file edited;
   `heavy ./gradlew :reposilite-backend:integration --tests 'com.reposilite.javadocs.*' --max-workers=2` passes, and the backend unit suite
   compiles.
-- [ ] 3.4 Verify the drop-in path. Start the built server jar with no plugins directory and with the default image layout, and check that
+- [x] 3.4 Verify the drop-in path. Start the built server jar with no plugins directory and with the default image layout, and check that
   the viewer answers on `/javadoc/` and that a jar of version `1.1.0` in the plugins directory is the one in use (the update rule of the
   prerequisite). Verify: the container images job passes on this pull request, including the upgrade rehearsal against the upstream image.
 - [x] 3.5 Verify: `git diff --stat` shows renames of the files above, the pull request names no file under `openspec/`, and its changed
