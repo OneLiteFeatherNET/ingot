@@ -223,9 +223,9 @@ Starts after all Phase 2 pull requests are merged, except e2e specs that a Phase
 ### 3.S04 configuration and scripts (6 files) - `refactor(ui): type the build and test configuration`
 
 - [x] 3.S04.1 Rename `vite.config.js`, `vitest.config.js`, `playwright.config.js`, `eslint.config.js`, `nitro.config.mjs`, `scripts/anchors-doc.mjs` and `scripts/generate-api-types.mjs`. Change the `anchors:doc` and `types:api` npm scripts to run the `.ts` files through `tsx`. Commit the renames only.
-- [ ] 3.S04.2 Add types. The Vite plugins for the mount point and the dashboard placeholders keep their output: `index.html` after `npm run build` is compared byte for byte with the baseline.
-- [ ] 3.S04.3 Run the gates, the build comparison and `npm run anchors:doc`, and confirm the generated doc is unchanged.
-- [ ] 3.S04.4 Open the pull request `refactor(ui): type the build and test configuration`.
+- [x] 3.S04.2 Add types. The Vite plugins for the mount point and the dashboard placeholders keep their output: `index.html` after `npm run build` is compared byte for byte with the baseline.
+- [x] 3.S04.3 Run the gates, the build comparison and `npm run anchors:doc`, and confirm the generated doc is unchanged.
+- [x] 3.S04.4 Open the pull request `refactor(ui): type the build and test configuration`.
 
 ## 4. Phase 4: strict everywhere
 
