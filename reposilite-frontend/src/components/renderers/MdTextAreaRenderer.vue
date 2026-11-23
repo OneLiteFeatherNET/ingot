@@ -21,7 +21,7 @@ import { rendererProps, useJsonFormsControl } from '@jsonforms/vue'
 import { useVanillaControl } from '@dzikoysk/vue-vanilla'
 import { computed, defineComponent } from 'vue'
 import MdTextArea from '../md/MdTextArea.vue'
-import { descriptionText } from './description'
+import { useFieldBinding } from './useFieldBinding'
 
 // A string may be this long and still fit one line of the text field. Longer limits are prose.
 const SINGLE_LINE_LIMIT = 120
@@ -44,21 +44,12 @@ export default defineComponent({
   props: rendererProps<ControlElement>(),
   setup(props) {
     const input = useVanillaControl(useJsonFormsControl(props))
-    const path = computed(() => input.control.value.path)
+    const { text: value, fieldProps, onInput } = useFieldBinding({ control: input.control, handleChange: input.handleChange })
     const maxLength = computed(() => (input.control.value.schema as { maxLength?: number } | undefined)?.maxLength ?? 0)
-    const value = computed(() => {
-      const data: unknown = input.control.value.data
-      return data === undefined || data === null ? '' : String(data)
-    })
-
-    // An emptied field removes the value, so the property is left out and the server default applies.
-    const onInput = (raw: string) => {
-      input.handleChange(path.value, raw === '' ? undefined : raw)
-    }
 
     return {
       ...input,
-      descriptionText,
+      fieldProps,
       maxLength,
       onInput,
       value
@@ -70,15 +61,9 @@ export default defineComponent({
 <template>
   <MdTextArea
     v-if="control.visible"
-    :id="`${control.id}-input`"
+    v-bind="fieldProps"
     :model-value="value"
-    :label="control.label"
     :max-length="maxLength"
-    :supporting-text="descriptionText(control.description)"
-    :error="Boolean(control.errors)"
-    :error-text="control.errors || ''"
-    :disabled="!control.enabled"
-    :required="control.required"
     @update:model-value="onInput"
   />
 </template>

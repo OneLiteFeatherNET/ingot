@@ -22,7 +22,7 @@ import { useVanillaControl } from '@dzikoysk/vue-vanilla'
 import { computed, defineComponent, ref, watch } from 'vue'
 import MdTextField from '../md/MdTextField.vue'
 import MdIconButton from '../md/MdIconButton.vue'
-import { descriptionText } from './description'
+import { useFieldBinding } from './useFieldBinding'
 import { isSensitive } from './sensitive'
 
 /*
@@ -41,8 +41,7 @@ export default defineComponent({
   props: rendererProps<ControlElement>(),
   setup(props) {
     const input = useVanillaControl(useJsonFormsControl(props))
-    const path = computed(() => input.control.value.path)
-    const numeric = computed(() => ['number', 'integer'].includes((input.control.value.schema as { type?: string } | undefined)?.type ?? ''))
+    const { path, numeric, text: displayValue, fieldProps, onInput } = useFieldBinding({ control: input.control, handleChange: input.handleChange })
 
     // A secret is a string whose key or schema marks it as one (see sensitive.ts). It is masked until
     // the user reveals it with the toggle in the trailing icon.
@@ -55,28 +54,11 @@ export default defineComponent({
       if (secret.value && !revealed.value) return 'password'
       return numeric.value ? 'number' : 'text'
     })
-    const displayValue = computed(() => {
-      const value: unknown = input.control.value.data
-      return value === undefined || value === null ? '' : String(value)
-    })
-
-    // An emptied field removes the value instead of storing an empty string, so the property is
-    // left out of the saved configuration.
-    const onInput = (raw: string) => {
-      if (raw === '') {
-        input.handleChange(path.value, undefined)
-      } else if (numeric.value) {
-        const parsed = Number(raw)
-        input.handleChange(path.value, Number.isNaN(parsed) ? undefined : parsed)
-      } else {
-        input.handleChange(path.value, raw)
-      }
-    }
 
     return {
       ...input,
-      descriptionText,
       displayValue,
+      fieldProps,
       inputType,
       numeric,
       onInput,
@@ -91,18 +73,12 @@ export default defineComponent({
 <template>
   <MdTextField
     v-if="control.visible"
-    :id="`${control.id}-input`"
+    v-bind="fieldProps"
     :model-value="displayValue"
-    :label="control.label"
     variant="outlined"
     :type="inputType"
     :autocomplete="secret ? 'new-password' : undefined"
     :spellcheck="secret ? 'false' : undefined"
-    :supporting-text="descriptionText(control.description)"
-    :error="Boolean(control.errors)"
-    :error-text="control.errors || ''"
-    :disabled="!control.enabled"
-    :required="control.required"
     @update:model-value="onInput"
   >
     <template
