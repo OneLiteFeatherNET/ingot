@@ -17,18 +17,17 @@
 import { ref } from "vue"
 import type { AxiosError } from 'axios'
 import { createURL } from '../client'
-import { createErrorToast, errorMessage } from '../../helpers/toast'
-import { EventSource as Eventsource } from 'extended-eventsource'
+import { createErrorToast } from '../../helpers/toast'
 import { useSession } from "../session"
+import { tableOf } from './log'
 import { ConsoleSocket, type CompleteFrame, type ConfirmFrame, type ResultFrame, type SocketState } from './socket'
 
 const { client, authMode } = useSession()
 
-const connection = ref<Eventsource | undefined>()
 const command = ref("")
 
 /**
- * Where the stream stands, as something a template can render. `readyState` alone cannot
+ * Where the socket stands, as something a template can render. `readyState` alone cannot
  * do that job: it is not reactive, and it collapses "never tried" and "gave up" into the
  * same value, which are the two cases a reader most needs told apart.
  *
@@ -80,8 +79,7 @@ const saveHistory = () => {
   }
 }
 
-// The socket of protocol 1, from the hello on. Commands use it once the server has welcomed it. Against a server without
-// protocol 1 it is dropped, and the console runs over the event stream and the HTTP execute as before.
+// The socket of protocol 1. Commands go over it once the server has welcomed it, and nothing else carries them.
 let socket: ConsoleSocket | undefined
 let welcomed = false
 
@@ -89,28 +87,18 @@ let welcomed = false
 // command is answered busy meanwhile.
 const confirmation = ref<ConfirmFrame | null>(null)
 
-// The exit code of a command that did not run because it was not confirmed, the code of the HTTP 409 answer.
+// The exit code of a command that did not run because it was not confirmed.
 const NOT_CONFIRMED_EXIT_CODE = 3
 
 export default function useConsole() {
-  const consoleAddress = createURL("/api/console/log")
-
-  const isConnected = () => {
-    // using built-in EventSource for readystate constants
-    // the ones from extended-eventsource return undefined for some reason
-    return connection.value?.readyState === EventSource.OPEN
-  }
+  const isConnected = () => status.value === 'open'
 
   const close = () => {
     const current = socket
     socket = undefined
+    welcomed = false
     confirmation.value = null
     current?.close()
-    // Not gated on isConnected: a stream still opening has a readyState of CONNECTING and
-    // would slip through, which is how leaving the tab mid-handshake used to leave the
-    // request running.
-    connection.value?.close()
-    connection.value = undefined
     status.value = 'closed'
   }
 
@@ -149,29 +137,17 @@ export default function useConsole() {
     addCommandToHistory(sent)
     command.value = ''
 
-    if (socket && welcomed) {
-      // A command is never queued while the socket reconnects, so it goes back into the input instead.
-      if (socket.execute(sent) === null) {
-        if (command.value === '') command.value = sent
-        createErrorToast('Command not sent: the console is reconnecting.')
-      }
-      return Promise.resolve()
+    // A command is never queued while the socket is down, so it goes back into the input instead.
+    if (!socket || !welcomed || socket.execute(sent) === null) {
+      if (command.value === '') command.value = sent
+      createErrorToast('Command not sent: the console is not connected.')
     }
-
-    return client.value.console.execute(sent)
-      .catch(error => {
-        console.error(error)
-        // The text goes back so it can be fixed and sent again, unless the reader has already
-        // started typing the next command, which must not be overwritten.
-        if (command.value === '') command.value = sent
-        createErrorToast(`Command not sent: ${errorMessage(error)}`)
-      })
   }
 
   // The line and cursor the last completion was asked for. An answer for a line the reader has since changed is dropped.
   let completing: { id: string; line: string } | null = null
 
-  // Asks the server for the words that complete the line. Over the event stream there is nobody to ask, so nothing happens.
+  // Asks the server for the words that complete the line.
   const complete = () => {
     if (!socket || !welcomed) return
     const line = command.value
@@ -217,12 +193,12 @@ export default function useConsole() {
   const onOpen = ref<(() => void) | undefined>()
   // The level is given for the lines of the socket, which name it in the frame. A line of the stream carries it in its text.
   const onMessage = ref<((data: string, level?: string) => void) | undefined>()
-  const onError = ref<((error: unknown) => void) | undefined>()
-  const onClose = ref<(() => void) | undefined>()
+  // The table of the structured data of a result.
+  const onData = ref<((table: { columns: string[]; rows: string[][] }) => void) | undefined>()
 
-  // An EventSource error carries no status code, so a 401 cannot be read from the stream. The
-  // session is asked directly instead. Its answer only counts while the stream still reports
-  // the failure: a reconnect that started in the meantime has nothing to explain.
+  // A refused socket carries no status code, so a 401 cannot be read from it. The session is asked directly instead. Its
+  // answer only counts while the socket still reports the failure: a reconnect that started in the meantime has nothing
+  // to explain.
   const checkSession = () =>
     client.value.auth.me()
       .catch((error: AxiosError | undefined) => {
@@ -230,63 +206,6 @@ export default function useConsole() {
         sessionExpired.value = true
         failure.value = 'Your session has expired. Sign in again, then reconnect.'
       })
-
-  // A cookie session has no token to send: the browser attaches the HttpOnly session cookie to
-  // the stream (withCredentials). A token session, or one not known yet, sends the token as before.
-  const streamOptions = (token: { name: string; secret: string }) =>
-    authMode?.value === 'cookie'
-      ? { withCredentials: true }
-      : { headers: { Authorization: `xBasic ${btoa(`${token.name}:${token.secret}`)}` } }
-
-  const connect = (token: { name: string; secret: string }) => {
-    status.value = 'connecting'
-    failure.value = null
-    sessionExpired.value = false
-
-    try {
-      connection.value = new Eventsource(consoleAddress, {
-        ...streamOptions(token),
-        // No automatic retry, on purpose. A stream that fails because the server is
-        // struggling is the worst moment to start reconnecting in a loop. The view offers
-        // a button instead, so the retry happens when somebody decides it should.
-        disableRetry: true
-      })
-
-      connection.value.onopen = () => {
-        // this is needed to stop an error from appearing in console when
-        // switching/refreshing the page without closing the connection
-        window.onbeforeunload = function () {
-          close()
-        }
-
-        status.value = 'open'
-        onOpen.value?.()
-      }
-
-      connection.value.addEventListener("log", (event: MessageEvent<string>) => {
-        if (!event.data.toString().includes("GET /api/status/instance from"))
-          onMessage.value?.(event.data)
-      })
-
-      connection.value.onerror = (error) => {
-        status.value = 'error'
-        failure.value = describe(error)
-        onError.value?.(error)
-        void checkSession()
-      }
-
-      ;(connection.value as Eventsource & { onclose?: () => void }).onclose = () => {
-        // An error already says more than a close does, so it keeps the field.
-        if (status.value !== 'error') status.value = 'closed'
-        onClose.value?.()
-      }
-
-    } catch (error) {
-      status.value = 'error'
-      failure.value = describe(error)
-      onError.value?.(error)
-    }
-  }
 
   // Sends the answer of the waiting command and closes the question. Without a ready socket nothing is sent, and the
   // server drops the command with the connection, so it does not run.
@@ -304,45 +223,44 @@ export default function useConsole() {
     if (result.exitCode === NOT_CONFIRMED_EXIT_CODE && result.confirmed === false && output.length === 0) {
       onMessage.value?.('The command did not run, because it was not confirmed.', 'WARN')
     }
+    const table = tableOf(result.data)
+    if (table !== null) onData.value?.(table)
     output.forEach(line => onMessage.value?.(line.text, line.stream === 'stderr' ? 'ERROR' : 'INFO'))
     const exitCode = result.exitCode as number | undefined
     if (exitCode !== undefined && exitCode !== 0) onMessage.value?.(`Exit code ${exitCode}`, 'ERROR')
   }
 
   /**
-   * Opens the console over the socket of protocol 1 when the server offers it, and over the event stream otherwise. A
-   * server without protocol 1 answers the hello as a first message without credentials and hangs up, and anything else
-   * that ends the socket before its welcome falls back the same way. A cookie session has no token for the hello, so it
-   * stays on the event stream.
+   * Opens the console over the socket of protocol 1, from the hello on. A token session puts its token in the hello. A
+   * cookie session has none: the browser attaches the HttpOnly session cookie to the upgrade request, and the server reads
+   * it there. A socket that ends before its welcome is retried with the backoff of the client, never over HTTP.
    */
   const open = (token: { name: string; secret: string }) => {
     loadSensitiveNames(token)
-    if (authMode?.value === 'cookie') return connect(token)
+    const previous = socket
+    socket = undefined
+    previous?.close()
     status.value = 'connecting'
     failure.value = null
     sessionExpired.value = false
+    // Stops an error from appearing in the console when the page is refreshed without closing the connection.
+    window.onbeforeunload = () => close()
 
     welcomed = false
     const candidate: ConsoleSocket = new ConsoleSocket({
       url: createURL('/api/console/sock').replace(/^http/, 'ws'),
       client: 'ingot-dashboard',
-      token: `${token.name}:${token.secret}`,
+      token: authMode?.value === 'cookie' ? undefined : `${token.name}:${token.secret}`,
       listener: {
         onState: (state: SocketState) => {
           if (socket !== candidate) return
-          if (welcomed) {
-            if (state === 'waiting' || state === 'connecting') status.value = 'connecting'
-            if (state === 'refused') {
-              socket = undefined
-              status.value = 'error'
-              failure.value = 'The server ended the console session.'
-              void checkSession()
-            }
-          } else if (state === 'waiting' || state === 'refused') {
+          if (state === 'waiting' || state === 'connecting') status.value = 'connecting'
+          if (state === 'refused') {
             socket = undefined
-            // Closed once the client has finished with the drop, so the retry it schedules is cancelled too.
-            queueMicrotask(() => candidate.close())
-            connect(token)
+            welcomed = false
+            status.value = 'error'
+            failure.value = 'The server ended the console session.'
+            void checkSession()
           }
         },
         onWelcome: () => {
@@ -386,17 +304,14 @@ export default function useConsole() {
   }
 
   return {
-    connection,
     open,
-    connect,
     close,
     status,
     failure,
     sessionExpired,
     onOpen,
     onMessage,
-    onError,
-    onClose,
+    onData,
     command,
     execute,
     complete,
@@ -406,19 +321,4 @@ export default function useConsole() {
     nextCommand,
     isConnected
   }
-}
-
-/**
- * An EventSource error event carries no reason, so there is nothing to quote back. Say what
- * is actually known instead of inventing a cause: whether the browser is offline is the one
- * distinction that changes what the reader should do next.
- */
-function describe(error: unknown): string {
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-    return 'This browser is offline.'
-  }
-  if (error instanceof Error && error.message) {
-    return error.message
-  }
-  return 'The server closed the stream or could not be reached.'
 }

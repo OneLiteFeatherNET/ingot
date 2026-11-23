@@ -49,58 +49,11 @@ vi.mock('../../helpers/toast', () => ({
   errorMessage: (error: Error) => error.message
 }))
 
-type Listener = (event: { data: string }) => void
-
-// The part of the fake stream the tests use: the listeners the view registers, and the
-// handlers it assigns to the stream as properties.
-interface FakeStream {
-  url: string
-  options: unknown
-  listeners: Map<string, Listener>
-  closed?: boolean
-  onopen: () => void
-  onerror: (error: unknown) => void
-  addEventListener: (type: string, handler: Listener) => void
-  close: () => void
-}
-
-const { FakeEventSource } = vi.hoisted(() => {
-  class FakeEventSource implements FakeStream {
-    static instances: FakeEventSource[] = []
-
-    url: string
-    options: unknown
-    listeners: Map<string, Listener>
-    closed?: boolean
-    onopen!: () => void
-    onerror!: (error: unknown) => void
-
-    constructor(url: string, options: unknown) {
-      this.url = url
-      this.options = options
-      this.listeners = new Map()
-      FakeEventSource.instances.push(this)
-    }
-
-    addEventListener(type: string, handler: Listener) {
-      this.listeners.set(type, handler)
-    }
-
-    close() {
-      this.closed = true
-    }
-  }
-  FakeEventSource.instances = []
-  return { FakeEventSource }
-})
-vi.mock('extended-eventsource', () => ({ EventSource: FakeEventSource }))
-
-// The console socket, driven by the test frame by frame. By default it plays a server without protocol 1: that server
-// reads the hello as a first message without credentials, answers with its error and hangs up, as upstream does.
+// The console socket, driven by the test frame by frame. It plays a server that has not answered yet: the test sends the
+// welcome, the log frames and the closes itself.
 const { FakeWebSocket } = vi.hoisted(() => {
   class FakeWebSocket {
     static instances: FakeWebSocket[] = []
-    static speaksVersion1 = false
 
     readyState = 0
     sent: string[] = []
@@ -118,10 +71,6 @@ const { FakeWebSocket } = vi.hoisted(() => {
 
     send(data: string) {
       this.sent.push(data)
-      if (!FakeWebSocket.speaksVersion1 && (JSON.parse(data) as { type?: string }).type === 'hello') {
-        this.onmessage?.({ data: '{"status":401,"message":"Unauthorized CLI access request (missing credentials)"}' })
-        this.drop(1000)
-      }
     }
 
     close() {
@@ -144,10 +93,26 @@ const { FakeWebSocket } = vi.hoisted(() => {
   return { FakeWebSocket }
 })
 
-const emitLine = (stream: FakeStream, text: string) => {
-  const handler = stream.listeners.get('log')
-  if (!handler) throw new Error('the view did not listen for log lines')
-  handler({ data: text })
+// What the tests do to the console socket, under the names of a stream: the welcome opens it, a line is a log frame and
+// a refusal is the server closing with 1008.
+interface FakeStream {
+  socket: InstanceType<typeof FakeWebSocket>
+  onopen: () => void
+  onerror: (error: unknown) => void
+}
+
+const streamAt = (index: number): FakeStream => {
+  const socket = FakeWebSocket.instances[index]
+  return {
+    socket,
+    onopen: () => socket.receive({ type: 'welcome', protocol: 1, boot: 'boot-1', node: 'node-a', seq: 0, replay: null }),
+    onerror: () => socket.drop(1008)
+  }
+}
+
+let lineSeq = 0
+const emitLine = (stream: FakeStream, text: string, level = 'INFO') => {
+  stream.socket.receive({ type: 'log', seq: ++lineSeq, node: 'node-a', level, text, dropped: 0 })
 }
 
 // Loaded after the reset of beforeEach, so the panel is the same copy the view draws.
@@ -163,9 +128,8 @@ describe('ConsoleView', () => {
     // The log is module state that outlives a mount, so each test loads a fresh copy of the
     // view and its stores. Otherwise the lines of one test would show up in the next.
     vi.resetModules()
-    FakeEventSource.instances.length = 0
+    lineSeq = 0
     FakeWebSocket.instances.length = 0
-    FakeWebSocket.speaksVersion1 = false
     vi.stubGlobal('WebSocket', FakeWebSocket)
     vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new Error('the command listing is not answered'))))
     sessionStorage.clear()
@@ -203,7 +167,6 @@ describe('ConsoleView', () => {
 
   describe('console socket', () => {
     const welcomed = async () => {
-      FakeWebSocket.speaksVersion1 = true
       await mountView()
       const socket = FakeWebSocket.instances[0]
       socket.receive({ type: 'welcome', protocol: 1, boot: 'boot-1', node: 'node-a', seq: 0, replay: null })
@@ -211,10 +174,9 @@ describe('ConsoleView', () => {
       return socket
     }
 
-    it('runs the console over the socket and opens no event stream when the server offers protocol 1', async () => {
+    it('runs the console over the socket', async () => {
       await welcomed()
 
-      expect(FakeEventSource.instances, 'a server that speaks protocol 1 needs no event stream').toHaveLength(0)
       expect(wrapper.find('[role="status"]').text(), 'the welcome connects the console').toContain('Connected')
     })
 
@@ -431,31 +393,112 @@ describe('ConsoleView', () => {
     })
   })
 
-  describe('server without protocol 1', () => {
-    it('falls back to the event stream and sends commands over HTTP', async () => {
-      session.client!.value.console.execute = vi.fn(() => Promise.resolve())
+  describe('session cookie', () => {
+    it('sends a hello without a token in cookie mode, so the browser cookie carries the login', async () => {
+      session.authMode = ref('cookie')
+      session.token = ref({ name: '', secret: '' })
       await mountView()
-      FakeEventSource.instances[0].onopen()
+
+      expect(FakeWebSocket.instances, 'a cookie session opens the one console socket').toHaveLength(1)
+      const hello = FakeWebSocket.instances[0].frames()[0]
+      expect(hello, 'the hello names protocol 1').toMatchObject({ type: 'hello', protocols: [1] })
+      expect(hello, 'a cookie session has no secret to put in the hello').not.toHaveProperty('token')
+    })
+
+    it('ignores a token that is still around in cookie mode', async () => {
+      session.authMode = ref('cookie')
+      await mountView()
+
+      expect(FakeWebSocket.instances[0].frames()[0], 'the cookie is the credential, not the token').not.toHaveProperty('token')
+    })
+
+    it('sends a command over the socket in cookie mode and makes no HTTP request for it', async () => {
+      session.authMode = ref('cookie')
+      await mountView()
+      streamAt(0).onopen()
       await flushPromises()
 
       await sendCommand(wrapper, 'status')
 
-      expect(FakeEventSource.instances, 'the log arrives over the event stream as before').toHaveLength(1)
-      expect(session.client!.value.console.execute, 'the command is sent over HTTP as before').toHaveBeenCalledWith('status')
+      expect(FakeWebSocket.instances[0].frames().at(-1), 'the command goes over the socket').toMatchObject({ type: 'execute', command: 'status' })
+      expect(session.client!.value.console.execute, 'no HTTP request runs a command').not.toHaveBeenCalled()
+    })
+  })
+
+  describe('server that closes the hello', () => {
+    it('keeps trying over the socket and never falls back to an HTTP request', async () => {
+      await mountView()
+      FakeWebSocket.instances[0].drop(1000)
+      await flushPromises()
+
+      expect(wrapper.text(), 'the console says it is connecting').toContain('Connecting to the remote console')
+      expect(fetch, 'no listing of commands is needed to connect').not.toHaveBeenCalledWith(expect.stringContaining('/api/console/log'), expect.anything())
+      expect(session.client!.value.console.execute, 'a command never goes over HTTP').not.toHaveBeenCalled()
+    })
+  })
+
+  describe('structured data of a result', () => {
+    const resultWith = async (data: unknown) => {
+      await mountView()
+      const stream = streamAt(0)
+      stream.onopen()
+      await flushPromises()
+      await sendCommand(wrapper, 'tokens')
+      const id = stream.socket.frames().at(-1)!.id
+      stream.socket.receive({
+        type: 'result', id, status: 'SUCCEEDED', exitCode: 0, data, node: 'node-a', confirmed: false,
+        output: [{ stream: 'stdout', text: 'two tokens' }]
+      })
+      await flushPromises()
+    }
+
+    it('shows a list of records as a table with their keys as the head', async () => {
+      await resultWith([{ name: 'ci', path: '/releases' }, { name: 'ops', path: '/private' }])
+
+      const table = wrapper.find('#console table')
+      expect(table.exists(), 'data is shown as a table').toBe(true)
+      expect(table.findAll('th').map(cell => cell.text()), 'the keys are the column heads').toEqual(['name', 'path'])
+      expect(table.findAll('tbody tr'), 'every record is a row').toHaveLength(2)
+      expect(table.text(), 'the cells hold the values').toContain('/private')
     })
 
-    it('keeps a cookie session on the event stream', async () => {
-      session.authMode = ref('cookie')
-      await mountView()
+    it('keeps the text lines of the command below the table', async () => {
+      await resultWith([{ name: 'ci' }])
 
-      expect(FakeWebSocket.instances, 'a cookie session has no token to send in a hello').toHaveLength(0)
-      expect(FakeEventSource.instances, 'the log arrives over the event stream as before').toHaveLength(1)
+      const output = wrapper.find('#console')
+      expect(output.text(), 'the text lines stay').toContain('two tokens')
+      expect(output.html().indexOf('<table'), 'the table comes first').toBeLessThan(output.html().indexOf('two tokens'))
+    })
+
+    it('renders markup inside a cell as literal text', async () => {
+      await resultWith([{ name: '<img src=x onerror=alert(1)>' }])
+
+      expect(wrapper.find('#console table').text(), 'the payload is shown verbatim').toContain('<img src=x onerror=alert(1)>')
+      expect(wrapper.find('#console table img').exists(), 'a cell never creates elements').toBe(false)
+    })
+
+    it('shows no table when the result has no data', async () => {
+      await resultWith(null)
+
+      expect(wrapper.find('#console table').exists(), 'a result without data has no table').toBe(false)
+    })
+  })
+
+  describe('refusal by the server', () => {
+    it('shows the sign-in state and does not reconnect in a loop when the socket closes with 1008', async () => {
+      session.client = ref({ auth: { me: vi.fn(() => Promise.reject(Object.assign(new Error('Unauthorized'), { response: { status: 401 } }))) }, console: { execute: vi.fn() } })
+      await mountView()
+      streamAt(0).onerror(null)
+      await flushPromises()
+
+      expect(buttonLabelled(wrapper, 'Sign in'), 'the page asks the reader to sign in again').toBeDefined()
+      expect(FakeWebSocket.instances, 'no further attempt until the reader acts').toHaveLength(1)
     })
   })
 
   it('keeps the lines printed before a reconnect and marks where the connection came back', async () => {
     await mountView()
-    const first = FakeEventSource.instances[0]
+    const first = streamAt(0)
     first.onopen()
     emitLine(first, 'hello')
     await flushPromises()
@@ -464,7 +507,7 @@ describe('ConsoleView', () => {
 
     await buttonLabelled(wrapper, 'Reconnect')!.trigger('click')
     await flushPromises()
-    FakeEventSource.instances[1].onopen()
+    streamAt(1).onopen()
     await flushPromises()
 
     const output = wrapper.find('#console').text()
@@ -475,7 +518,7 @@ describe('ConsoleView', () => {
   describe('log text', () => {
     it('renders markup in a log line as literal text instead of elements', async () => {
       await mountView()
-      const stream = FakeEventSource.instances[0]
+      const stream = streamAt(0)
       stream.onopen()
       emitLine(stream, '<img src=x onerror=alert(1)> &amp;')
       await flushPromises()
@@ -487,7 +530,7 @@ describe('ConsoleView', () => {
 
     it('renders a log line with exactly its own characters and no template whitespace', async () => {
       await mountView()
-      const stream = FakeEventSource.instances[0]
+      const stream = streamAt(0)
       stream.onopen()
       emitLine(stream, '  indented \u001b[31mred\u001b[0m tail')
       await flushPromises()
@@ -498,7 +541,7 @@ describe('ConsoleView', () => {
 
     it('colours a segment with a class instead of an inline style', async () => {
       await mountView()
-      const stream = FakeEventSource.instances[0]
+      const stream = streamAt(0)
       stream.onopen()
       emitLine(stream, '\u001b[31mERROR\u001b[0m done')
       await flushPromises()
@@ -513,7 +556,7 @@ describe('ConsoleView', () => {
   describe('empty output', () => {
     it('says the first line is awaited while nothing has been printed', async () => {
       await mountView()
-      FakeEventSource.instances[0].onopen()
+      streamAt(0).onopen()
       await flushPromises()
 
       expect(wrapper.text(), 'an open console with no output yet should say it is waiting').toContain('Waiting for the first log line')
@@ -521,7 +564,7 @@ describe('ConsoleView', () => {
 
     it('says no line matches the filter instead of waiting for a first line', async () => {
       await mountView()
-      const stream = FakeEventSource.instances[0]
+      const stream = streamAt(0)
       stream.onopen()
       emitLine(stream, 'hello')
       await flushPromises()
@@ -535,7 +578,7 @@ describe('ConsoleView', () => {
 
     it('shows the wait for the first line as an empty state panel', async () => {
       await mountView()
-      FakeEventSource.instances[0].onopen()
+      streamAt(0).onopen()
       await flushPromises()
 
       const MdStatePanel = await loadStatePanel()
@@ -546,7 +589,7 @@ describe('ConsoleView', () => {
 
     it('shows the no-match message as an empty state panel', async () => {
       await mountView()
-      const stream = FakeEventSource.instances[0]
+      const stream = streamAt(0)
       stream.onopen()
       emitLine(stream, 'hello')
       await flushPromises()
@@ -578,7 +621,7 @@ describe('ConsoleView', () => {
 
     it('keeps the reader in place when new output arrives while they have scrolled up', async () => {
       await mountView()
-      const stream = FakeEventSource.instances[0]
+      const stream = streamAt(0)
       stream.onopen()
       await flushPromises()
       const panel = wrapper.find<HTMLElement>('#console').element
@@ -592,7 +635,7 @@ describe('ConsoleView', () => {
 
     it('follows new output while the reader is at the end of the panel', async () => {
       await mountView()
-      const stream = FakeEventSource.instances[0]
+      const stream = streamAt(0)
       stream.onopen()
       await flushPromises()
       const panel = wrapper.find<HTMLElement>('#console').element
@@ -630,7 +673,7 @@ describe('ConsoleView', () => {
 
     it('announces the connection state through a status region', async () => {
       await mountView()
-      FakeEventSource.instances[0].onopen()
+      streamAt(0).onopen()
       await flushPromises()
 
       expect(wrapper.find('[role="status"]').text(), 'a change in the connection should be announced').toContain('Connected')
@@ -640,7 +683,7 @@ describe('ConsoleView', () => {
   describe('disconnected banner', () => {
     const drop = async () => {
       await mountView()
-      const stream = FakeEventSource.instances[0]
+      const stream = streamAt(0)
       stream.onopen()
       emitLine(stream, 'hello')
       await flushPromises()
@@ -706,7 +749,7 @@ describe('ConsoleView', () => {
     const expireSession = async () => {
       session.client = ref({ auth: { me: vi.fn(unauthorized) }, console: { execute: vi.fn() } })
       await mountView()
-      FakeEventSource.instances[0].onerror(new Event('error'))
+      streamAt(0).onerror(new Event('error'))
       await flushPromises()
     }
 
@@ -733,7 +776,7 @@ describe('ConsoleView', () => {
     it('offers no sign in button for an ordinary stream failure', async () => {
       session.client = ref({ auth: { me: vi.fn(() => Promise.reject(new Error('Network Error'))) }, console: { execute: vi.fn() } })
       await mountView()
-      FakeEventSource.instances[0].onerror(new Event('error'))
+      streamAt(0).onerror(new Event('error'))
       await flushPromises()
 
       expect(buttonLabelled(wrapper, 'Sign in'), 'a server that cannot be reached is not an expired session').toBeUndefined()

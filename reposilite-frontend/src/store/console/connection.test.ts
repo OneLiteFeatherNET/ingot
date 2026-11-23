@@ -17,11 +17,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ref, type Ref } from 'vue'
 import { flushPromises } from '@vue/test-utils'
-import type useConsoleFactory from './connection'
 
 // The store reads the session for its client and token at import time, and it talks to the
-// stream through EventSource. Both are replaced so the test runs without a server, a token
-// or a browser stream.
+// console through a WebSocket. Both are replaced so the test runs without a server, a token
+// or a browser socket.
 const session = vi.hoisted(() => ({
   client: null as Ref<unknown> | null,
   token: null,
@@ -34,79 +33,107 @@ vi.mock('../../helpers/toast', () => ({
   errorMessage: (error: Error) => error.message
 }))
 
-interface StreamOptions {
-  withCredentials?: boolean
-  headers?: Record<string, string>
-  disableRetry?: boolean
-}
+// A socket that never leaves the test: the test reads what the store sent and plays the server itself.
+const { FakeWebSocket } = vi.hoisted(() => {
+  class FakeWebSocket {
+    static instances: FakeWebSocket[] = []
 
-// A stream that never leaves the test: the test reads what the store attached to it and
-// fires the events itself, so nothing waits on a socket.
-const { FakeEventSource } = vi.hoisted(() => {
-  class FakeEventSource {
-    static instances: FakeEventSource[]
-    url: string
-    options: StreamOptions
-    listeners: Map<string, (event: { data: unknown }) => void>
-    closed?: boolean
-    declare onerror: (error: Event) => void
+    sent: string[] = []
+    readyState = 0
+    onopen: (() => void) | null = null
+    onmessage: ((event: { data: unknown }) => void) | null = null
+    onclose: ((event: { code: number }) => void) | null = null
 
-    constructor(url: string, options: StreamOptions) {
-      this.url = url
-      this.options = options
-      this.listeners = new Map()
-      FakeEventSource.instances.push(this)
+    constructor(readonly url: string) {
+      FakeWebSocket.instances.push(this)
+      queueMicrotask(() => {
+        this.readyState = 1
+        this.onopen?.()
+      })
     }
 
-    addEventListener(type: string, handler: (event: { data: unknown }) => void) {
-      this.listeners.set(type, handler)
+    send(data: string) {
+      this.sent.push(data)
     }
 
     close() {
-      this.closed = true
+      this.readyState = 3
+    }
+
+    receive(frame: object) {
+      this.onmessage?.({ data: JSON.stringify(frame) })
+    }
+
+    drop(code: number) {
+      this.readyState = 3
+      this.onclose?.({ code })
+    }
+
+    hello(): Record<string, unknown> {
+      return JSON.parse(this.sent[0]) as Record<string, unknown>
     }
   }
-  FakeEventSource.instances = []
-  return { FakeEventSource }
+  return { FakeWebSocket }
 })
-vi.mock('extended-eventsource', () => ({ EventSource: FakeEventSource }))
 
 describe('useConsole', () => {
   beforeEach(() => {
     // Every test imports the store afresh, so the command history and the other module-scope
     // state of one test cannot leak into the next one, whatever order they run in.
     vi.resetModules()
-    FakeEventSource.instances.length = 0
+    FakeWebSocket.instances.length = 0
+    vi.stubGlobal('WebSocket', FakeWebSocket)
+    vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new Error('the command listing is not answered'))))
+    sessionStorage.clear()
     session.authMode = null
+    session.client = ref({ auth: { me: vi.fn(() => Promise.resolve()) }, console: { execute: vi.fn() } })
     vi.spyOn(console, 'error').mockImplementation(() => {})
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
+  const welcome = (socket: InstanceType<typeof FakeWebSocket>) =>
+    socket.receive({ type: 'welcome', protocol: 1, boot: 'boot-1', node: 'node-a', seq: 0, replay: null })
+
   describe('sending a command', () => {
-    it('restores the typed command when sending it fails', async () => {
-      session.client = ref({
-        console: { execute: vi.fn(() => Promise.reject(new Error('connection refused'))) }
-      })
+    it('keeps the typed command in the input and sends no HTTP request while the socket is not ready', async () => {
+      const execute = vi.fn()
+      session.client = ref({ console: { execute } })
       const { default: useConsole } = await import('./connection')
-      const { command, execute } = useConsole()
+      const { command, execute: send, open } = useConsole()
+      open({ name: 'ops', secret: 'secret' })
       command.value = 'say hello'
 
-      await execute()
+      send()
 
       expect(command.value, 'a command that was not sent must stay in the input so it can be sent again').toBe('say hello')
+      expect(execute, 'a command never goes over HTTP').not.toHaveBeenCalled()
+    })
+
+    it('sends an execute frame once the server has welcomed the socket', async () => {
+      const { default: useConsole } = await import('./connection')
+      const { command, execute, open } = useConsole()
+      open({ name: 'ops', secret: 'secret' })
+      await flushPromises()
+      welcome(FakeWebSocket.instances[0])
+      command.value = 'status'
+
+      execute()
+
+      expect(JSON.parse(FakeWebSocket.instances[0].sent.at(-1)!), 'the command goes over the socket').toMatchObject({ type: 'execute', command: 'status' })
+      expect(command.value, 'a sent command leaves the input').toBe('')
     })
   })
 
   describe('command history', () => {
     it('keeps the commands sent before the console was opened again', async () => {
-      session.client = ref({ console: { execute: vi.fn(() => Promise.resolve()) } })
       const { default: useConsole } = await import('./connection')
       const beforeRemount = useConsole()
       beforeRemount.command.value = 'list'
-      await beforeRemount.execute()
+      beforeRemount.execute()
 
       // Opening the view again creates a second call to the composable, as a remount does.
       const afterRemount = useConsole()
@@ -116,83 +143,74 @@ describe('useConsole', () => {
     })
   })
 
-  describe('authenticating the stream', () => {
+  describe('authenticating the socket', () => {
     const open = async (mode: string | undefined, token: { name: string; secret: string }) => {
-      session.client = ref({ console: { execute: vi.fn() } })
       session.authMode = ref(mode)
       const { default: useConsole } = await import('./connection')
-      useConsole().connect(token)
-      return FakeEventSource.instances[0]
+      useConsole().open(token)
+      await flushPromises()
+      return FakeWebSocket.instances[0]
     }
 
-    it('sends the session cookie and no token header in cookie mode', async () => {
-      const stream = await open('cookie', { name: '', secret: '' })
+    it('sends no token in cookie mode, so the browser cookie is the credential', async () => {
+      const socket = await open('cookie', { name: '', secret: '' })
 
-      expect(stream.options.withCredentials, 'the browser must attach the HttpOnly session cookie').toBe(true)
-      expect(stream.options.headers?.Authorization, 'a cookie session has no token to send').toBeUndefined()
+      expect(socket.hello(), 'a cookie session has no secret for the hello').not.toHaveProperty('token')
     })
 
     it('ignores a token that is still around in cookie mode', async () => {
-      const stream = await open('cookie', { name: 'ops', secret: 'secret' })
+      const socket = await open('cookie', { name: 'ops', secret: 'secret' })
 
-      expect(stream.options.headers?.Authorization).toBeUndefined()
+      expect(socket.hello()).not.toHaveProperty('token')
     })
 
-    it('keeps the token header in token mode', async () => {
-      const stream = await open('token', { name: 'ops', secret: 'secret' })
+    it('sends the token in the hello in token mode', async () => {
+      const socket = await open('token', { name: 'ops', secret: 'secret' })
 
-      expect((stream.options.headers as Record<string, string>).Authorization).toBe(`xBasic ${btoa('ops:secret')}`)
-      expect(stream.options.withCredentials, 'a token session does not need cookies').toBeFalsy()
+      expect(socket.hello()).toMatchObject({ type: 'hello', protocols: [1], token: 'ops:secret' })
     })
 
-    it('keeps the token header when nobody is known to be signed in', async () => {
-      const stream = await open(undefined, { name: 'ops', secret: 'secret' })
+    it('sends the token when nobody is known to be signed in', async () => {
+      const socket = await open(undefined, { name: 'ops', secret: 'secret' })
 
-      expect((stream.options.headers as Record<string, string>).Authorization).toBe(`xBasic ${btoa('ops:secret')}`)
-    })
-
-    it('still never retries on its own', async () => {
-      const stream = await open('cookie', { name: '', secret: '' })
-
-      expect(stream.options.disableRetry).toBe(true)
+      expect(socket.hello()).toMatchObject({ token: 'ops:secret' })
     })
   })
 
-  describe('stream failure', () => {
-    const streamWithProbe = (probe: () => Promise<unknown>) => {
+  describe('socket failure', () => {
+    const refuse = async (probe: () => Promise<unknown>) => {
       session.client = ref({ auth: { me: probe }, console: { execute: vi.fn() } })
-    }
-
-    const failStream = async (useConsole: typeof useConsoleFactory) => {
+      const { default: useConsole } = await import('./connection')
       const store = useConsole()
-      store.connect({ name: 'ops', secret: 'secret' })
-      FakeEventSource.instances[0].onerror(new Event('error'))
+      store.open({ name: 'ops', secret: 'secret' })
+      await flushPromises()
+      FakeWebSocket.instances[0].drop(1008)
       await flushPromises()
       return store
     }
 
-    it('says the session expired when the stream fails and the session check answers 401', async () => {
+    it('says the session expired when the server refuses the socket and the session check answers 401', async () => {
       const probe = vi.fn(() => Promise.reject(Object.assign(new Error('Unauthorized'), { response: { status: 401 } })))
-      streamWithProbe(probe)
-      const { default: useConsole } = await import('./connection')
 
-      const { failure, sessionExpired } = await failStream(useConsole)
+      const { failure, sessionExpired, status } = await refuse(probe)
 
       expect(probe, 'the failure should be checked against the session, not guessed').toHaveBeenCalledTimes(1)
+      expect(status.value, 'a refused socket is an error').toBe('error')
       expect(sessionExpired.value, 'a 401 from the session check means the session expired').toBe(true)
-      expect(failure.value, 'the reader should be told the session expired, not that the stream closed').toContain('session has expired')
+      expect(failure.value, 'the reader should be told the session expired').toContain('session has expired')
     })
 
     it('keeps the generic failure when the session check cannot reach the server', async () => {
-      streamWithProbe(vi.fn(() => Promise.reject(new Error('Network Error'))))
-      const { default: useConsole } = await import('./connection')
-
-      const { failure, sessionExpired } = await failStream(useConsole)
+      const { failure, sessionExpired } = await refuse(vi.fn(() => Promise.reject(new Error('Network Error'))))
 
       expect(sessionExpired.value, 'an unreachable server is not an expired session').toBe(false)
-      expect(failure.value, 'without a 401 the message must not blame the session').toBe(
-        'The server closed the stream or could not be reached.'
-      )
+      expect(failure.value, 'without a 401 the message must not blame the session').toBe('The server ended the console session.')
+    })
+
+    it('does not open another socket after a refusal', async () => {
+      await refuse(vi.fn(() => Promise.resolve()))
+
+      expect(FakeWebSocket.instances, 'a refusal is final until the reader reconnects').toHaveLength(1)
     })
   })
 })

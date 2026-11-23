@@ -907,9 +907,30 @@ application
   })
   .ws("/api/console/sock", (connection) => {
     let authenticated = false
+    // Set by a first message that is a version 1 hello. The legacy text protocol below stays as it was.
+    let version1 = false
+    let sequence = 0
+
+    const send = (frame: object) => connection.send(JSON.stringify(frame))
 
     connection.on("message", (data) => {
       const message = String(data)
+      if (version1 || message.startsWith('{"type":"hello"')) {
+        const frame = JSON.parse(message) as { type: string; id?: string; command?: string; line?: string }
+        if (frame.type === "hello") {
+          version1 = true
+          send({ type: "welcome", protocol: 1, boot: "fake-boot", node: "fake-node", seq: sequence, replay: null })
+          send({ type: "log", seq: ++sequence, node: "fake-node", level: "INFO", text: "Console connected", dropped: 0 })
+        } else if (frame.type === "execute") {
+          send({
+            type: "result", id: frame.id, status: "SUCCEEDED", exitCode: 0, data: null, node: "fake-node", confirmed: false,
+            output: [{ stream: "stdout", text: "Response: " + frame.command }]
+          })
+        } else if (frame.type === "complete") {
+          send({ type: "complete", id: frame.id, replace: { start: 0, end: frame.line?.length ?? 0 }, candidates: [] })
+        }
+        return
+      }
       if (message == "Authorization:name:secret") {
         sendMessage(connection, "DEBUG | Authorized")
         authenticated = true
