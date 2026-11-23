@@ -60,7 +60,7 @@ Groups 2 and 3 are merged on `main` (#412, #427, #434). Their tasks stay as the 
   matching `Origin` is accepted and a cookie with another `Origin` closes with 1008; a token revoked after the handshake is refused on the
   next `execute` and closes with 1008; a session closes at its expiry time (fake clock); no frame, error or audit event contains the secret;
   the audit `client` is the hello `client`. Verify: red before 4.8.
-- [ ] 4.7 `test(console)`: failing tests for the listing `scope` (`status` is `node`, a plugin command defaults to `cluster`), for the
+- [x] 4.7 `test(console)`: failing tests for the listing `scope` (`status` is `node`, a plugin command defaults to `cluster`), for the
   liveness pings (a socket whose ping write fails is dropped; there is no pong deadline because Javalin 7.2.2 exposes no pong events) and for `shutdown` (`error` then 1001). Verify: red before 4.8.
 - [ ] 4.8 `feat(console)`: add the version 1 branch beside the legacy branch of `ConsoleWebSocketHandler`, with the bounded queue and one
   writer per connection, the handshake, the timers through an injected scheduler, the sequence numbers in the cached logger, the `scope`
@@ -102,7 +102,7 @@ Groups 2 and 3 are merged on `main` (#412, #427, #434). Their tasks stay as the 
   `GET /api/console/commands` answers `404`.
 - [x] 6.4 `test(cli)`: failing tests for TLS: a custom CA against a test server with a generated certificate in a temporary directory, the
   `--insecure` warning, no insecure switch in the config file.
-- [ ] 6.5 `feat(cli)`: add the Gradle module `ingot-cli` to `settings.gradle.kts` with its first code. Implement configuration, tokens, exec
+- [x] 6.5 `feat(cli)`: add the Gradle module `ingot-cli` to `settings.gradle.kts` with its first code. Implement configuration, tokens, exec
   mode and TLS with picocli and `java.net.http.HttpClient`. Without a terminal, bare `ingot` prints usage and exits with code 2, because the
   interactive mode arrives in group 7. Verify: 6.1 to 6.4 are green and `./gradlew :ingot-cli:build` passes.
 - [x] 6.6 Code pull request, title `feat(cli): add the ingot command line client`. Read the template and fill it as in 4.9. The CLI stays in this
@@ -117,14 +117,14 @@ Groups 2 and 3 are merged on `main` (#412, #427, #434). Their tasks stay as the 
   and does not send it again; the reconnect carries the `resume` of the last `seq`; a missing-credentials answer with `404` from
   `GET /api/console/commands` exits with 6 and runs nothing; a refused token exits with 4; no colour when stdout is not a terminal.
   Verify: red before 7.2, and the backoff uses an injected clock.
-- [ ] 7.2 `feat(cli)`: add JLine 3 and the REPL on the protocol client: line editing, history with owner-only permissions, completion from
+- [x] 7.2 `feat(cli)`: add JLine 3 and the REPL on the protocol client: line editing, history with owner-only permissions, completion from
   `complete` frames, multi-line output, the node in the prompt, the confirmation prompt, and the reconnect of `console-websocket`. Add the
   JLine licence to `allowed-licenses.json` if needed. Verify: 7.1 is green and `./gradlew :ingot-cli:build` passes.
-- [ ] 7.3 Code pull request, title `feat(cli): run the repl over the shared websocket protocol`. Same description rules as 4.9.
+- [x] 7.3 Code pull request, title `feat(cli): run the repl over the shared websocket protocol`. Same description rules as 4.9.
 
 ## 8. Packaging and images (`build(cli)`, `ci(cli)`, `test(cli)`)
 
-- [ ] 8.1 `test(cli)`: failing smoke test that runs the shaded jar with `--version` and `exec status` against the stub server, and a
+- [x] 8.1 `test(cli)`: failing smoke test that runs the shaded jar with `--version` and `exec status` against the stub server, and a
   bare `ingot` without a terminal, to check the entry point. Verify: red before 8.2.
 - [ ] 8.2 `build(cli)`: a runnable shaded jar `ingot-cli-<version>.jar`, a CLI `Dockerfile` with the build stage pinned to
   `--platform=$BUILDPLATFORM`, the JRE base pinned by tag and digest, a non-root user, entrypoint `ingot`. Add the base image to `renovate.json`
