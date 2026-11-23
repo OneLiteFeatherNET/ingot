@@ -20,7 +20,9 @@
  * and the disclosure role. The chevron turns with the open state, on the motion token.
  *
  * Props:
- *   open  whether the body is shown (v-model:open). It starts closed.
+ *   open     whether the body is shown (v-model:open). It starts closed.
+ *   variant  'default' puts the label and a chevron at the end of the summary. 'tree' puts a right-pointing chevron
+ *            before the summary content, which is laid out by the caller, and adds no padding around the body.
  * Emits update:open when the browser opens or closes the body.
  * Slots: summary (the label of the disclosure) and default (the body).
  */
@@ -28,7 +30,10 @@ import { ref, watch } from 'vue'
 import MdIcon from './MdIcon.vue'
 import MdTransition from './MdTransition.vue'
 
-const props = withDefaults(defineProps<{ open?: boolean }>(), { open: false })
+const props = withDefaults(defineProps<{ open?: boolean; variant?: 'default' | 'tree' }>(), {
+  open: false,
+  variant: 'default',
+})
 const emit = defineEmits<{ 'update:open': [open: boolean] }>()
 
 // expanded drives the body and the chevron. detailsOpen is the open attribute of the details element: it follows
@@ -67,8 +72,17 @@ const onAfterLeave = () => {
   if (!expanded.value) detailsOpen.value = false
 }
 
-const CHEVRON = 'M6 9l6 6 6-6'
-const chevronClass = () => (expanded.value ? 'rotate-180' : '')
+const tree = () => props.variant === 'tree'
+const CHEVRON = () => (tree() ? 'M9 6l6 6-6 6' : 'M6 9l6 6 6-6')
+const chevronClass = () => [
+  tree() ? 'shrink-0 text-on-surface-variant' : '',
+  expanded.value ? (tree() ? 'rotate-90' : 'rotate-180') : '',
+]
+const SUMMARY_CLASS = {
+  default:
+    'md-state-layer md-title-small flex cursor-pointer items-center justify-between gap-2 rounded-corner-small py-3 text-on-surface focus-visible:outline-2 focus-visible:outline-primary',
+  tree: 'flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1 bg-surface-container-low px-4 py-2',
+}
 </script>
 
 <template>
@@ -78,16 +92,27 @@ const chevronClass = () => (expanded.value ? 'rotate-180' : '')
     @toggle="onToggle"
   >
     <summary
-      class="md-state-layer md-title-small flex cursor-pointer items-center justify-between gap-2 rounded-corner-small py-3 text-on-surface focus-visible:outline-2 focus-visible:outline-primary"
+      :class="SUMMARY_CLASS[variant]"
       @click.prevent="onClick"
     >
-      <span><slot name="summary" /></span>
-      <MdIcon
-        :path="CHEVRON"
-        size="md"
-        class="transition-transform duration-md-short3"
-        :class="chevronClass()"
-      />
+      <template v-if="tree()">
+        <MdIcon
+          :path="CHEVRON()"
+          size="sm"
+          class="transition-transform duration-md-short3"
+          :class="chevronClass()"
+        />
+        <slot name="summary" />
+      </template>
+      <template v-else>
+        <span><slot name="summary" /></span>
+        <MdIcon
+          :path="CHEVRON()"
+          size="md"
+          class="transition-transform duration-md-short3"
+          :class="chevronClass()"
+        />
+      </template>
     </summary>
     <MdTransition
       pattern="expand"
@@ -98,7 +123,7 @@ const chevronClass = () => (expanded.value ? 'rotate-180' : '')
         class="expand-rows"
       >
         <div class="min-h-0 overflow-hidden">
-          <div class="pb-4 text-on-surface-variant">
+          <div :class="tree() ? '' : 'pb-4 text-on-surface-variant'">
             <slot />
           </div>
         </div>
