@@ -26,6 +26,7 @@ import { canUse } from '../store/nodeAccess'
 import { setContributions, setReaderPages } from '../navigation/registry'
 import type { PluginManifest, ReaderManifest } from '../navigation/registry'
 import IndexPage from './IndexPage.vue'
+import SettingsIcon from '../components/icons/SettingsIcon.vue'
 
 // The session flags the mock hands to the page. Each test sets them before the page is mounted, so they start empty.
 interface SessionFlags {
@@ -216,6 +217,18 @@ describe('the icon of a plugin page entry', () => {
     const bare = entries.filter(entry => !entry.find('svg').exists()).map(entry => entry.text())
     expect(entries.map(entry => entry.text()), 'the plugin pages are listed').toEqual(expect.arrayContaining(['Guides', 'Mirror credentials']))
     expect(bare, 'no rail entry without an icon').toEqual([])
+  })
+
+  it('draws the settings icon for the entries of plugin pages', async () => {
+    setReaderPages(READERS)
+    setContributions(ADMIN_PAGES)
+    const { wrapper } = await mountAt('/', { nodes: ['ingot.admin.*'], logged: true })
+
+    const pathOf = (label: string) => rail(wrapper).findAll('a').find(entry => entry.text() === label)!.find('svg path').attributes('d')
+    const settings = mount(SettingsIcon).find('path').attributes('d')
+
+    expect(pathOf('Guides'), 'a reader page takes the fallback').toBe(settings)
+    expect(pathOf('Mirror credentials'), 'an admin plugin page takes the fallback').toBe(settings)
   })
 
   it('draws an icon for every entry of the bottom bar', async () => {
