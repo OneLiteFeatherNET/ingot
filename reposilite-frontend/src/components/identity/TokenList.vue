@@ -260,7 +260,7 @@ const lastUsedText = (token: IdentityToken) => {
                       >
                         <span class="shrink-0">from</span>
                         <span
-                          class="min-w-0 truncate md-code-medium"
+                          class="min-w-0 truncate font-mono"
                           data-test="last-used-address"
                           :title="token.lastUsedIp"
                         >{{ token.lastUsedIp }}</span>

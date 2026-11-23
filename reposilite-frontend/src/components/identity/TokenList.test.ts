@@ -146,7 +146,7 @@ describe('TokenList', () => {
 
       const element = rows(wrapper)[0].find('[data-test="last-used-address"]')
       expect(element.attributes('title')).toBe(address)
-      expect(element.classes(), 'truncated, not wrapped into the next column').toEqual(expect.arrayContaining(['truncate', 'min-w-0', 'md-code-medium']))
+      expect(element.classes(), 'truncated, not wrapped into the next column').toEqual(expect.arrayContaining(['truncate', 'min-w-0', 'font-mono']))
     })
 
     it('says Never for a token that does not expire and Never used for one that was not used', async () => {

@@ -171,7 +171,7 @@ onBeforeUnmount(stopPolling)
         >
           <div class="flex flex-col gap-2">
             <div class="flex flex-wrap items-baseline justify-between gap-2">
-              <span class="md-code-medium text-on-surface">{{ row.id }}</span>
+              <span class="font-mono md-title-small text-on-surface">{{ row.id }}</span>
               <span class="md-body-small text-on-surface-variant">{{ countLabel(row.fileCount, 'file') }}</span>
             </div>
             <p class="md-body-medium text-on-surface">

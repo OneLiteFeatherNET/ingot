@@ -832,7 +832,7 @@ const onModalUpdate = (open: boolean) => {
               <div class="flex flex-wrap items-center gap-2">
                 <code
                   data-test="secret"
-                  class="min-w-0 flex-1 break-all rounded-corner-small bg-surface px-3 py-2 md-code-medium text-on-surface"
+                  class="min-w-0 flex-1 break-all rounded-corner-small bg-surface px-3 py-2 font-mono md-body-large text-on-surface"
                 >{{ plan.result.secret }}</code>
                 <MdIconButton
                   :aria-label="`Copy the secret of token ${plan.result.tokenName}`"

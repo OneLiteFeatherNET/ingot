@@ -391,7 +391,7 @@ onBeforeUnmount(stopPolling)
               :data-progress="entry.state"
               class="flex flex-wrap items-baseline justify-between gap-2 py-2"
             >
-              <span class="md-code-medium text-on-surface">{{ entry.name }}</span>
+              <span class="font-mono md-body-large text-on-surface">{{ entry.name }}</span>
               <span
                 class="md-body-small"
                 :class="entry.state === 'current' ? 'text-primary' : 'text-on-surface-variant'"
