@@ -80,7 +80,7 @@ of each wave. No file under `reposilite-backend/` and no file under `openspec/` 
   `MdNavigationItem`; migrate divided lists (NodeEditor, NodeInheritedSection, FileUpload, RunHistory, StorageUsagePanel,
   RepositoryOverview's divider, TokenList, LegacyGrantsPanel, InstanceStatusPanel, GettingStartedCard, PublicRepositoriesDialog) to
   `MdList`; remove the arbitrary `[&>li+li]:after` chain of `FileList`. Verify: 4.3 passes and `grep -rn "li+li" src` finds nothing.
-- [ ] 4.7 `fix(ui)`: migrate node rows (NodeRow, NodeInheritedSection), renderer rows (ConstantRenderer, UnsupportedRenderer,
+- [x] 4.7 `fix(ui)`: migrate node rows (NodeRow, NodeInheritedSection), renderer rows (ConstantRenderer, UnsupportedRenderer,
   BooleanSwitchRenderer with one `px-4` inset) and checklist items (CutOverStep) to `MdListItem`. Verify: `npm test` passes for the files touched.
 - [ ] 4.8 `fix(ui)`: migrate the key and value layouts (PrincipalDetail, TeamDetail, CheckPermissionView, ProfileCard, AuditEventRow,
   InstanceStatusPanel, IndexPanel, PluginBlock, SystemInfoView, SettingsHub, TokenList) to `MdKeyValueList`, the disclosures
