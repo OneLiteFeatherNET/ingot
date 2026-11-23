@@ -158,6 +158,8 @@ describe('PermissionNodesCard', () => {
       await mountCard({ subjectKind: 'principal', name: 'ghost' })
 
       expect(wrapper.find('[data-test="nodes-missing"]').text()).toContain('ghost')
+      expect(wrapper.find('[data-test="nodes-missing"]').attributes('role'), 'the missing notice is an alert').toBe('alert')
+      expect(wrapper.find('[data-test="nodes-missing"]').classes(), 'the notice is drawn on the error container').toContain('bg-error-container')
     })
 
     it('reads the nodes of the new subject when the name changes', async () => {

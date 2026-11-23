@@ -366,7 +366,9 @@ describe('RepositoryAccessCard', () => {
     holder.session!.client.value.identity.repositoryAccess = vi.fn(() => new Promise(() => {}))
     wrapper = await mountCard()
 
-    expect(wrapper.get('[data-test="loading"]').text()).toContain('Loading')
+    expect(wrapper.get('[data-test="loading"]').attributes('aria-busy'), 'the loading state is drawn as a busy state panel').toBe('true')
+    expect(wrapper.get('[data-test="loading"]').text(), 'the loading panel names what loads').toContain('Loading who has access')
+    expect(wrapper.get('[data-test="loading"]').attributes('data-ingot-state'), 'the stable anchor keeps its loading state while the panel draws the skeleton').toBe('loading')
   })
 
   it('shows the error with a retry that asks again', async () => {
@@ -375,6 +377,7 @@ describe('RepositoryAccessCard', () => {
     wrapper = await mountCard()
 
     expect(wrapper.get('[role="alert"]').text()).toContain('Server error')
+    expect(wrapper.get('[role="alert"]').text(), 'the error panel names what failed').toContain('Could not load who has access')
 
     await wrapper.get('[data-test="retry"]').trigger('click')
     await flushPromises()
