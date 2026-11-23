@@ -15,11 +15,13 @@
  */
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { ref } from 'vue'
+import { ref, type Component } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import SystemInfoView from './SystemInfoView.vue'
 import MdButton from '../md/MdButton.vue'
+import MdDisclosure from '../md/MdDisclosure.vue'
+import MdTransition from '../md/MdTransition.vue'
 import { configurationStoreKey } from '../../store/configuration'
 import { ADMIN_NODES } from '../../store/nodeAccess'
 
@@ -146,6 +148,8 @@ describe('SystemInfoView', () => {
   })
 })
 
+type Transition = { props: (key: 'pattern' | 'appear') => unknown }
+const transitionOf = (disclosure: { findComponent: (component: Component) => unknown }) => disclosure.findComponent(MdTransition as Component) as Transition
 const withInfo = (data: object = FIXTURE) => ({ support: { systemInfo: vi.fn(() => Promise.resolve({ data })) } })
 const panelsOf = (wrapper: Page) => wrapper.findAll('[role="tabpanel"]')
 const filterOf = (panel: PanelOf) => panel.find('input[type="search"]')
@@ -188,6 +192,30 @@ describe('SystemInfoView tabs', () => {
     const disclosure = panelsOf(wrapper)[0].find('details')
     expect(disclosure.attributes('data-ingot-component'), 'the arguments use the shared disclosure').toBe('md-disclosure')
     expect(disclosure.find('.expand-rows').exists(), 'the arguments sit in the expand wrapper').toBe(true)
+  })
+
+  it('opens every disclosure of the page through the expand pattern', async () => {
+    const wrapper = await mountView(withInfo())
+    await flushPromises()
+
+    // The key trees of the Environment and Configuration tabs toggle their rows with buttons; the sections that open as a
+    // disclosure are the input arguments and the support note, and both go through the shared component.
+    const disclosures = wrapper.findAllComponents(MdDisclosure)
+    expect(disclosures.map(disclosure => disclosure.find('summary').text()).sort()).toEqual(['Input arguments', 'What is removed'])
+    for (const disclosure of disclosures) {
+      const transition = transitionOf(disclosure)
+      expect(transition.props('pattern'), `the body of ${disclosure.find('summary').text()} uses the expand pattern`).toBe('expand')
+    }
+  })
+
+  it('draws a section that is open at load with no transition on the first paint', async () => {
+    const wrapper = await mountView(withInfo())
+    await flushPromises()
+
+    for (const disclosure of wrapper.findAllComponents(MdDisclosure)) {
+      expect(transitionOf(disclosure).props('appear'), 'the body does not animate in when the page is drawn').toBe(false)
+    }
+    expect((wrapper.element as Element).querySelectorAll('[class*="motion-expand"]'), 'no expand class is on the page before a toggle').toHaveLength(0)
   })
 
   it('draws the filter of both tabs as an MdTextField', async () => {
