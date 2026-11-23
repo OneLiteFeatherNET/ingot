@@ -124,6 +124,14 @@ describe('the repositories table on the shared data table', () => {
     expect(actions.classes(), 'the actions cell has the padding of every other cell').toEqual(expect.arrayContaining(['px-4', 'py-3']))
   })
 
+  it('draws the row action button without an inset so it stays a square target', async () => {
+    await mountTable()
+
+    const button = wrapper.findAll('tbody tr')[0].findAll('td').at(-1)!.find('button')
+
+    expect(button.classes(), 'the action button has no inset').toEqual(expect.arrayContaining(['px-0']))
+  })
+
   it('hides the visibility, version policy and storage columns below the xlarge window, and the address below large', async () => {
     await mountTable({ versionPolicy: true })
 

@@ -116,7 +116,8 @@ const onAccountSelect = (value: string): void => {
       :label="`Account menu for ${signedInName}`"
       :trigger-label="`Account menu, ${signedInName}`"
       :items="accountItems"
-      trigger-class="min-w-0 max-w-full gap-2 !px-2"
+      trigger-class="min-w-0 max-w-full gap-2"
+      trigger-inset="dense"
       @select="onAccountSelect"
     >
       <template #trigger>

@@ -23,7 +23,9 @@ const IMPORTANT_UTILITY = /class="[^"]*(?:[\w\]]!(?:\s|")|\s!\w)/
 describe('important modifier', () => {
   it.each([
     '../components/header/LoginModal.vue',
-    '../components/search/SearchView.vue'
+    '../components/search/SearchView.vue',
+    '../components/header/MenuPanel.vue',
+    '../components/repositories/RepositoriesTable.vue'
   ])('is not used in the template of %s', (path) => {
     const source = readFileSync(new URL(path, import.meta.url), 'utf8')
     expect(source, `${path} sets a utility with the important modifier`).not.toMatch(IMPORTANT_UTILITY)
