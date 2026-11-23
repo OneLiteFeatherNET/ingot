@@ -306,11 +306,13 @@ const SEND_ICON = 'M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240
             <p
               v-else
               class="whitespace-pre"
-            ><span
-              v-for="(segment, index) in entry.segments"
-              :key="index"
-              :class="segment.classes"
-            >{{ segment.text }}</span></p>
+            >
+              <span
+                v-for="(segment, index) in entry.segments"
+                :key="index"
+                :class="segment.classes"
+              >{{ segment.text }}</span>
+            </p>
           </template>
 
           <!--
