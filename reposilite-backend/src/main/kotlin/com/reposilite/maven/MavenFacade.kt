@@ -103,6 +103,14 @@ class MavenFacade internal constructor(
         repositoryService.findFile(lookupRequest)
             .peek { touchMirrorCopy(lookupRequest) }
 
+    /** See [RepositoryService.findFileInOneRead]. */
+    fun findFileInOneRead(lookupRequest: LookupRequest): Result<ResolvedDocument, ErrorResponse>? =
+        repositoryService.findFileInOneRead(lookupRequest)
+
+    /** Whether a download may be answered with a redirect, in which case the content is not read by this instance. */
+    internal fun redirectsDownloads(): Boolean =
+        presignedRedirectTtl != null
+
     fun findData(lookupRequest: LookupRequest): Result<InputStream, ErrorResponse> =
         repositoryService.findInputStream(lookupRequest)
             .peek { touchMirrorCopy(lookupRequest) }

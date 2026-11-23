@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@file:OptIn(net.onelitefeather.ingot.format.ExperimentalIngotFormatApi::class)
+@file:OptIn(net.onelitefeather.ingot.format.ExperimentalIngotFormatApi::class, net.onelitefeather.ingot.plugin.ExperimentalIngotPluginApi::class)
 
 package com.reposilite.maven
 
@@ -50,6 +50,7 @@ import com.reposilite.storage.api.Location
 import com.reposilite.storage.api.RepositoryDirectoryInfo
 import com.reposilite.token.AccessTokenIdentifier
 import io.javalin.http.HttpStatus.CONFLICT
+import io.javalin.http.ContentType
 import panda.std.Result
 import panda.std.asSuccess
 import panda.std.ok
@@ -200,6 +201,33 @@ internal class RepositoryService(
             .`is`(DocumentInfo::class.java) { notFound("Requested file is a directory") }
             .flatMap { details -> findInputStream(repository, gav, accessToken).map { details to it } }
             .let { extensions.emitEvent(ResolvedFileEvent(accessToken, repository, gav, it)).result }
+
+    /**
+     * A whole file of a repository that has no mirrors, read in one call so that a remote storage answers it with one request,
+     * where [findDetails] and [findInputStream] together ask twice. Null when this read does not apply, which is the case for
+     * a repository that is unknown or has mirrors, and for a path the token may not read; the caller then takes the regular
+     * lookup. An error is a failed read, and the regular lookup gives the same answer or a directory listing.
+     */
+    fun findFileInOneRead(lookupRequest: LookupRequest): Result<ResolvedDocument, ErrorResponse>? {
+        val (accessToken, _, gav) = lookupRequest
+        val repository = repositoryProvider.getRepository(lookupRequest.repository) ?: return null
+        if (repository.mirrorHosts.isNotEmpty() || canAccessResource(accessToken, repository.name, gav).isErr) {
+            return null
+        }
+        extensions.emitEvent(PreResolveEvent(accessToken, repository, gav))
+
+        return repository.storageProvider.readEntry(gav).flatMap { entry ->
+            val details = DocumentInfo(
+                name = gav.getSimpleName(),
+                contentType = ContentType.contentTypeByExtension(gav.getExtension()) ?: ContentType.APPLICATION_OCTET_STREAM,
+                contentLength = entry.size,
+                lastModifiedTime = entry.lastModified,
+            )
+            recordResolvedRequest(Identifier(repository.name, gav.toString()), details, repository.repositoryFormat.pathRules.countsAsDownload(gav))
+            extensions.emitEvent(ResolvedFileDataEvent(accessToken, repository, gav, Result.ok(entry.content))).result
+                .map { content -> ResolvedDocument(document = details, cachable = repository.acceptsCachingOf(gav), content = content) }
+        }
+    }
 
     fun findInputStream(lookupRequest: LookupRequest): Result<InputStream, ErrorResponse> =
         resolve(lookupRequest) { repository, gav -> findInputStream(repository, gav, lookupRequest.accessToken) }
