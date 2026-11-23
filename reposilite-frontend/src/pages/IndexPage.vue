@@ -666,7 +666,7 @@ const activeLabel = computed((): string => pageLabel(section.value as string))
                     @click="openOverflowItem($event, item.key)"
                   >
                     <component
-                      :is="SECTION_ICONS[item.key]"
+                      :is="SECTION_ICONS[item.key] ?? SECTION_ICONS.settings"
                       :filled="section === item.key"
                     />
                     <span class="md-label-large">{{ item.label }}</span>
@@ -688,7 +688,7 @@ const activeLabel = computed((): string => pageLabel(section.value as string))
         >
           <template #icon="{ item, active }">
             <component
-              :is="SECTION_ICONS[item.key]"
+              :is="SECTION_ICONS[item.key] ?? SECTION_ICONS.settings"
               :filled="active"
             />
           </template>
