@@ -862,6 +862,30 @@
         "required" : [ "value", "count" ],
         "type" : "object"
       },
+      "FacetableAttribute" : {
+        "properties" : {
+          "key" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "key", "label" ],
+        "type" : "object"
+      },
+      "FacetableAttributesResponse" : {
+        "properties" : {
+          "attributes" : {
+            "items" : {
+              "$ref" : "#/components/schemas/FacetableAttribute"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "attributes" ],
+        "type" : "object"
+      },
       "FactorCountsDto" : {
         "properties" : {
           "authenticator" : {
@@ -2443,6 +2467,15 @@
       },
       "SearchFacets" : {
         "properties" : {
+          "attributes" : {
+            "additionalProperties" : {
+              "items" : {
+                "$ref" : "#/components/schemas/FacetBucket"
+              },
+              "type" : "array"
+            },
+            "type" : [ "object", "null" ]
+          },
           "classifier" : {
             "items" : {
               "$ref" : "#/components/schemas/FacetBucket"
@@ -6488,6 +6521,27 @@
           "schema" : {
             "type" : "string"
           }
+        }, {
+          "description" : "key:value filter on a declared filterable attribute, repeatable; an OR within a key, an AND across keys. At most 4 keys and 16 values per key.",
+          "in" : "query",
+          "name" : "attribute",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "key:asc or key:desc, sorts by one declared sortable attribute; rows without a value sort last",
+          "in" : "query",
+          "name" : "attributeSort",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Comma-separated declared facetable attribute keys to count, at most 8",
+          "in" : "query",
+          "name" : "attributeFacets",
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -6501,7 +6555,7 @@
             "description" : "OK"
           },
           "400" : {
-            "description" : "Invalid parameter or result window exceeded. The message names the parameter."
+            "description" : "Invalid parameter or result window exceeded. The message names the parameter. An attribute that is not declared for its use has the problem type urn:ingot:problem:undeclared-attribute, a feature the search backend does not support urn:ingot:problem:unsupported-search-capability."
           },
           "404" : {
             "description" : "Search is turned off on this instance"
@@ -6511,6 +6565,28 @@
           }
         },
         "summary" : "Search artifacts across all repositories the caller may browse",
+        "tags" : [ "Search" ]
+      }
+    },
+    "/api/maven/search/attributes/facetable" : {
+      "get" : {
+        "description" : "The keys that an artifact enricher declared facetable, each with its label, ordered by key. The list is built from the declarations only: no search backend is asked and no attribute value is read. It is empty when no enricher declares a facetable key.",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FacetableAttributesResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "404" : {
+            "description" : "Search is turned off on this instance"
+          }
+        },
+        "summary" : "List the attribute keys a search can count",
         "tags" : [ "Search" ]
       }
     },
