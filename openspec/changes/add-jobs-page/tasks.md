@@ -63,7 +63,7 @@ dark, before and after the change.
 - [x] 3.3 `test(jobs)`: in `IndexPanel.test.ts` and `RunHistory.test.ts`, assert that the tabs draw the latest run of each kind and one
   run per policy, that "All runs" links to `{ name: 'jobs', query: { kind: 'index' } }` and to `{ name: 'jobs', query: { kind: 'cleanup' } }`,
   and that no run list is drawn. The existing assertions on the full lists are replaced by these. Verify: it fails.
-- [ ] 3.4 `test(jobs)`: in `e2e/jobs.spec.js`, add the cases: the Support entry opens the Jobs page, `/settings/jobs?kind=index` lists
+- [x] 3.4 `test(jobs)`: in `e2e/jobs.spec.js`, add the cases: the Support entry opens the Jobs page, `/settings/jobs?kind=index` lists
   index runs only, "Load more" adds rows, a detail opens and shows its failures, and both maintenance tabs link to the Jobs page. Locate
   by role and name, no fixed timeouts. Verify: it fails.
 - [x] 3.5 `feat(jobs)`: add the Jobs view under `reposilite-frontend/src/components/jobs/`, the client functions for the three endpoints,
