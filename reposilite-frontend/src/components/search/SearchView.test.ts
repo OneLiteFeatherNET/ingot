@@ -134,9 +134,14 @@ const failing = (status: number, message: string) => Object.assign(new Error(`st
 interface ClientAnswers {
   search?: (query: string) => Promise<unknown>
   searchFiles?: (params: Record<string, unknown>) => Promise<unknown>
+  facetableAttributes?: () => Promise<unknown>
 }
-const clientAnswering = ({ search = () => Promise.resolve({ data: answerPage() }), searchFiles = () => Promise.resolve({ data: answerFiles() }) }: ClientAnswers = {}) => ({
-  maven: { search: vi.fn(search), searchFiles: vi.fn(searchFiles) }
+const clientAnswering = ({
+  search = () => Promise.resolve({ data: answerPage() }),
+  searchFiles = () => Promise.resolve({ data: answerFiles() }),
+  facetableAttributes = () => Promise.resolve({ data: { attributes: [] } })
+}: ClientAnswers = {}) => ({
+  maven: { search: vi.fn(search), searchFiles: vi.fn(searchFiles), facetableAttributes: vi.fn(facetableAttributes) }
 })
 
 let wrapper: VueWrapper
@@ -849,5 +854,124 @@ describe('SearchView cards', () => {
     const skeleton = wrapper.find('[data-test="skeleton"]')
     expect(skeleton.attributes('data-ingot-component'), 'the skeleton sits on a shared card').toBe('md-card')
     expect(skeleton.attributes('data-variant'), 'the skeleton lies flat on the page').toBe('low')
+  })
+})
+
+describe('SearchView attribute filters', () => {
+  const FACETABLE = {
+    attributes: [
+      { key: 'minecraft-portal.game-version', label: 'Game version' },
+      { key: 'minecraft-portal.loader', label: 'Loader' }
+    ]
+  }
+  const withAttributes = (attributes: Record<string, { value: string; count: number }[]>) =>
+    answerPage({ facets: { ...answerPage().facets, attributes } })
+  const attributeChip = (key: string, value: string) => wrapper.find(`[data-test="chip-attribute-${key}-${value}"]`)
+  const attributeGroup = (key: string) => wrapper.find(`[data-test="group-attribute-${key}"]`)
+  const answering = (page: unknown) => clientAnswering({
+    facetableAttributes: () => Promise.resolve({ data: FACETABLE }),
+    search: () => Promise.resolve({ data: page })
+  })
+
+  it('asks for the facets of the facetable keys', async () => {
+    const client = await mountAt('/search', { client: answering(answerPage()) })
+
+    expect(searchCalls(client)).toEqual(['attributeFacets=minecraft-portal.game-version%2Cminecraft-portal.loader'])
+  })
+
+  it('shows one group per key of the response, with the counts and the label of the key', async () => {
+    const page = withAttributes({
+      'minecraft-portal.loader': [{ value: 'paper', count: 12 }, { value: 'folia', count: 3 }],
+      'minecraft-portal.game-version': [{ value: '1.21', count: 9 }]
+    })
+    await mountAt('/search', { client: answering(page) })
+
+    expect(attributeGroup('minecraft-portal.loader').text(), 'the group of the loader').toContain('Loader')
+    expect(attributeChip('minecraft-portal.loader', 'paper').text()).toContain('12')
+    expect(attributeChip('minecraft-portal.loader', 'folia').text()).toContain('3')
+    expect(attributeChip('minecraft-portal.game-version', '1.21').text()).toContain('9')
+  })
+
+  it('shows the key as the label when the list does not know it', async () => {
+    const page = withAttributes({ 'other.key': [{ value: 'x', count: 1 }] })
+    await mountAt('/search', { client: answering(page) })
+
+    expect(attributeGroup('other.key').text()).toContain('other.key')
+  })
+
+  it('shows no attribute group when the response has no attributes', async () => {
+    await mountAt('/search', { client: answering(answerPage()) })
+
+    expect(wrapper.findAll('[data-test^="group-attribute-"]')).toHaveLength(0)
+  })
+
+  it('writes a chosen value to the address and asks again', async () => {
+    const page = withAttributes({ 'minecraft-portal.loader': [{ value: 'paper', count: 12 }] })
+    const client = await mountAt('/search', { client: answering(page) })
+
+    await attributeChip('minecraft-portal.loader', 'paper').trigger('click')
+    await flushPromises()
+
+    expect(addressQuery().attribute).toEqual(['minecraft-portal.loader:paper'])
+    expect(searchCalls(client).at(-1)).toContain('attribute=minecraft-portal.loader%3Apaper')
+  })
+
+  it('shows the value of a shared address as chosen', async () => {
+    const page = withAttributes({ 'minecraft-portal.loader': [{ value: 'paper', count: 12 }] })
+    await mountAt('/search?attribute=minecraft-portal.loader:paper', { client: answering(page) })
+
+    expect(attributeChip('minecraft-portal.loader', 'paper').attributes('aria-pressed')).toBe('true')
+  })
+
+  it('keeps a chosen value with count zero when the buckets omit it', async () => {
+    const page = withAttributes({ 'minecraft-portal.loader': [{ value: 'folia', count: 3 }] })
+    await mountAt('/search?attribute=minecraft-portal.loader:paper', { client: answering(page) })
+
+    const kept = attributeChip('minecraft-portal.loader', 'paper')
+    expect(kept.exists(), 'the chosen value stays in its group').toBe(true)
+    expect(kept.attributes('aria-pressed')).toBe('true')
+    expect(attributeGroup('minecraft-portal.loader').text()).toContain('paper')
+  })
+
+  it('removes a chosen value from the address when it is chosen again', async () => {
+    const page = withAttributes({ 'minecraft-portal.loader': [{ value: 'paper', count: 12 }] })
+    await mountAt('/search?attribute=minecraft-portal.loader:paper', { client: answering(page) })
+
+    await attributeChip('minecraft-portal.loader', 'paper').trigger('click')
+    await flushPromises()
+
+    expect(addressQuery().attribute).toBeUndefined()
+  })
+
+  it.each(['urn:ingot:problem:unsupported-search-capability', 'urn:ingot:problem:undeclared-attribute'])(
+    'falls back to the plain search when the API refuses with %s',
+    async (type) => {
+      const search = vi.fn((query: string) => (query.includes('attribute')
+        ? Promise.reject(Object.assign(new Error('status 400'), { response: { status: 400, data: { message: 'refused', type } } }))
+        : Promise.resolve({ data: answerPage() })))
+      const client = clientAnswering({ search, facetableAttributes: () => Promise.resolve({ data: FACETABLE }) })
+      await mountAt('/search?attribute=minecraft-portal.loader:paper', { client })
+
+      expect(searchCalls(client).at(-1), 'the last request has no attribute parameter').not.toContain('attribute')
+      expect(addressQuery().attribute, 'the address drops the attribute').toBeUndefined()
+      expect(wrapper.find('[data-test="failure"]').exists(), 'no error is shown').toBe(false)
+      expect(wrapper.findAll('[data-test^="group-attribute-"]')).toHaveLength(0)
+      expect(rows()).toHaveLength(3)
+    }
+  )
+
+  it('still shows an error for another refusal', async () => {
+    const search = () => Promise.reject(Object.assign(new Error('status 400'), { response: { status: 400, data: { message: 'size is too big' } } }))
+    await mountAt('/search', { client: clientAnswering({ search, facetableAttributes: () => Promise.resolve({ data: FACETABLE }) }) })
+
+    expect(wrapper.text()).toContain('size is too big')
+  })
+
+  it('searches without facets when the list of keys cannot be read', async () => {
+    const client = clientAnswering({ facetableAttributes: () => Promise.reject(new Error('status 404')) })
+    await mountAt('/search', { client })
+
+    expect(searchCalls(client)).toEqual([''])
+    expect(rows()).toHaveLength(3)
   })
 })

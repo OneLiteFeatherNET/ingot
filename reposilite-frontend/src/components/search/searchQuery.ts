@@ -44,6 +44,8 @@ export interface SearchQuery {
   repository: string[]
   extension: string[]
   classifier: string[]
+  // Declared plugin attributes, each as `<key>:<value>`, the form the address and the request share.
+  attribute: string[]
   snapshot: Snapshot
   origin: OriginFilter
   modifiedAfter: string
@@ -63,6 +65,7 @@ const DEFAULT_SIZE = 20
 const MAX_SIZE = 100
 // The result window the server allows (page * size + size).
 const RESULT_WINDOW = 10000
+const MAX_FACET_KEYS = 8
 
 const DEFAULT_QUERY: SearchQuery = Object.freeze({
   q: '',
@@ -72,6 +75,7 @@ const DEFAULT_QUERY: SearchQuery = Object.freeze({
   repository: [],
   extension: [],
   classifier: [],
+  attribute: [],
   snapshot: 'all',
   origin: 'all',
   modifiedAfter: '',
@@ -85,10 +89,10 @@ const DEFAULT_QUERY: SearchQuery = Object.freeze({
 })
 
 const TEXT_KEYS = ['q', 'groupId', 'artifactId', 'version'] as const
-const LIST_KEYS = ['repository', 'extension', 'classifier'] as const
+const LIST_KEYS = ['repository', 'extension', 'classifier', 'attribute'] as const
 // The filters, as opposed to the text, the sort and the paging.
 const FILTER_KEYS = [
-  'groupId', 'artifactId', 'version', 'repository', 'extension', 'classifier', 'snapshot', 'origin',
+  'groupId', 'artifactId', 'version', 'repository', 'extension', 'classifier', 'attribute', 'snapshot', 'origin',
   'modifiedAfter', 'modifiedBefore', 'sizeMin', 'sizeMax'
 ] as const
 
@@ -97,6 +101,18 @@ const listFromParam = (param: unknown, normalise: (value: string) => string = va
     .filter((value): value is string => typeof value === 'string' && value.trim() !== '')
     .map(value => normalise(value.trim()))
   return [...new Set(values)]
+}
+
+// A pair is `<key>:<value>`: the key ends at the first colon, and neither side is empty.
+const attributePair = (value: string): boolean => {
+  const colon = value.indexOf(':')
+  return colon > 0 && colon < value.length - 1
+}
+
+// The key and the value of a pair that passed `attributePair`.
+const splitAttribute = (pair: string): { key: string; value: string } => {
+  const colon = pair.indexOf(':')
+  return { key: pair.slice(0, colon), value: pair.slice(colon + 1) }
 }
 
 const oneOf = <T extends string>(param: unknown, allowed: readonly T[], fallback: T): T =>
@@ -118,6 +134,7 @@ const parseSearchQuery = (query: Record<string, unknown> = {}): SearchQuery => (
   repository: listFromParam(query.repository),
   extension: listFromParam(query.extension, value => value.toLowerCase()),
   classifier: listFromParam(query.classifier),
+  attribute: listFromParam(query.attribute).filter(attributePair),
   snapshot: oneOf(query.snapshot, SNAPSHOTS, DEFAULT_QUERY.snapshot),
   origin: oneOf(query.origin, ORIGINS, DEFAULT_QUERY.origin),
   modifiedAfter: instantFromParam(query.modifiedAfter),
@@ -145,11 +162,13 @@ const toRouteQuery = (state: SearchQuery): RouteQuery => {
 }
 
 // The query string of the request: the same parameters, a repeated one once per value.
-const toRequestQuery = (state: SearchQuery): string => {
+// The keys whose facets are asked for go in one comma separated parameter, at most the eight the server allows.
+const toRequestQuery = (state: SearchQuery, facetKeys: readonly string[] = []): string => {
   const params = new URLSearchParams()
   for (const [key, value] of Object.entries(toRouteQuery(state))) {
     for (const entry of [value].flat()) params.append(key, entry)
   }
+  if (facetKeys.length > 0) params.set('attributeFacets', facetKeys.slice(0, MAX_FACET_KEYS).join(','))
   return params.toString()
 }
 
@@ -172,10 +191,11 @@ const activeFilters = (state: SearchQuery): string[] => {
   if (state.artifactId) words.push(`artifact starts with ${state.artifactId}`)
   if (state.version) words.push(`version ${state.version}`)
   for (const key of LIST_KEYS) {
-    if (state[key].length > 0) {
+    if (key !== 'attribute' && state[key].length > 0) {
       words.push(`${key} ${state[key].map(value => (value === '-' ? 'none' : value)).join(' or ')}`)
     }
   }
+  for (const pair of state.attribute) words.push(pair.replace(':', ' '))
   if (state.snapshot === 'false') words.push('releases only')
   if (state.snapshot === 'true') words.push('snapshots only')
   if (state.origin === 'hosted') words.push('hosted files only')
@@ -204,6 +224,7 @@ export {
   SORTS,
   RESULT_WINDOW,
   parseSearchQuery,
+  splitAttribute,
   toRouteQuery,
   toRequestQuery,
   changeQuery,

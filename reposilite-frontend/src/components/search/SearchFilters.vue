@@ -19,9 +19,9 @@ import { computed, ref, watch } from 'vue'
 import MdButton from '../md/MdButton.vue'
 import MdChip from '../md/MdChip.vue'
 import MdTextField from '../md/MdTextField.vue'
-import { activeFilters, dateInputValue, instantFromDateInput } from './searchQuery'
+import { activeFilters, dateInputValue, instantFromDateInput, splitAttribute } from './searchQuery'
 import type { SearchQuery } from './searchQuery'
-import type { Facets } from './searchResult'
+import type { AttributeFacets, FacetableAttribute, Facets } from './searchResult'
 
 interface FacetOption {
   value: string
@@ -51,10 +51,16 @@ type Draft = Record<TextKey | DateKey | BytesKey, string>
  * through `change`; the page puts that into the address. The text fields keep a draft while they are
  * typed in and report it when the field is left or Enter is pressed (the native change event).
  */
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   query: SearchQuery
   facets: Facets
-}>()
+  // The buckets of each declared attribute, and the labels of the keys the instance can count.
+  attributes?: AttributeFacets
+  attributeLabels?: FacetableAttribute[]
+}>(), {
+  attributes: () => ({}),
+  attributeLabels: () => []
+})
 
 const emit = defineEmits<{
   change: [partial: Partial<SearchQuery>]
@@ -90,6 +96,33 @@ const GROUPS = computed(() => ([
     label: (value: string) => (value === '-' ? 'none' : value)
   }
 ] as const).map(group => ({ ...group, options: optionsOf(group.facet, group.selected) })))
+
+// One group for each key of the response, in its order, then any chosen key it no longer lists. A chosen
+// value that the buckets omit stays, with no count, like the fixed groups.
+const ATTRIBUTE_GROUPS = computed(() => {
+  const chosen = props.query.attribute.map(splitAttribute)
+  const keys = [...new Set([...Object.keys(props.attributes), ...chosen.map(pair => pair.key)])]
+  return keys.map((key) => {
+    const selected = chosen.filter(pair => pair.key === key).map(pair => pair.value)
+    const listed = (props.attributes[key] ?? []).map(bucket => ({ value: bucket.value, count: bucket.count as number | null }))
+    const missing = selected.filter(value => !listed.some(option => option.value === value))
+    return {
+      key,
+      title: props.attributeLabels.find(entry => entry.key === key)?.label ?? key,
+      selected,
+      options: [...listed, ...missing.map(value => ({ value, count: null as number | null }))]
+    }
+  })
+})
+
+const toggleAttribute = (key: string, value: string) => {
+  const pair = `${key}:${value}`
+  emit('change', {
+    attribute: props.query.attribute.includes(pair)
+      ? props.query.attribute.filter(entry => entry !== pair)
+      : [...props.query.attribute, pair]
+  })
+}
 
 const toggleValue = (group: Pick<FilterGroup, 'key' | 'selected'>, value: string) => {
   const next = group.selected.includes(value)
@@ -176,6 +209,32 @@ const commitBytes = (key: BytesKey) => {
       >
         None in this result.
       </p>
+    </fieldset>
+
+    <fieldset
+      v-for="group in ATTRIBUTE_GROUPS"
+      :key="group.key"
+      class="m-0 min-w-0 border-0 p-0"
+      :data-test="`group-attribute-${group.key}`"
+    >
+      <legend class="mb-2 p-0 md-title-small text-on-surface">
+        {{ group.title }}
+      </legend>
+      <div class="flex flex-wrap gap-2">
+        <MdChip
+          v-for="option in group.options"
+          :key="option.value"
+          variant="filter"
+          toggle="button"
+          :data-test="`chip-attribute-${group.key}-${option.value}`"
+          :selected="group.selected.includes(option.value)"
+          :title="`${option.count ?? 0} files`"
+          @click="toggleAttribute(group.key, option.value)"
+        >
+          {{ option.value }}
+          <span class="md-label-medium">{{ option.count ?? 0 }}</span>
+        </MdChip>
+      </div>
     </fieldset>
 
     <fieldset

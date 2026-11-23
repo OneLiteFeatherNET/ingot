@@ -45,7 +45,7 @@ type LooseItem = Partial<Omit<ApiSearchItem, 'repositories'>> & {
 }
 type LoosePage = Partial<Omit<ApiSearchResponse, 'items' | 'facets' | 'indexStatus'>> & {
   items?: LooseItem[]
-  facets?: Partial<ApiSearchFacets>
+  facets?: Partial<ApiSearchFacets> & { attributes?: Record<string, FacetBucket[]> | null }
   indexStatus?: ApiIndexStatus
 }
 type LooseFile = Partial<ApiFileItem>
@@ -83,6 +83,14 @@ export interface IndexStatus {
 
 export type Facets = Record<'repository' | 'extension' | 'classifier' | 'origin' | 'snapshot', FacetBucket[]>
 
+export type AttributeFacets = Record<string, FacetBucket[]>
+
+// A key a search can count, with the label a visitor reads (GET /api/maven/search/attributes/facetable).
+export interface FacetableAttribute {
+  key: string
+  label: string
+}
+
 export interface SearchPage {
   items: SearchItem[]
   page: number
@@ -90,6 +98,8 @@ export interface SearchPage {
   total: number
   totalCapped: boolean
   facets: Facets
+  // The buckets of each declared attribute the request asked facets for, in the order the response gives.
+  attributes: AttributeFacets
   indexStatus: IndexStatus
 }
 
@@ -144,6 +154,15 @@ const orNull = (value: unknown): number | null => (typeof value === 'number' ? v
 const normalizeFacet = (buckets: FacetBucket[] | undefined): FacetBucket[] =>
   (Array.isArray(buckets) ? buckets : []).map(bucket => ({ value: String(bucket.value ?? ''), count: count(bucket.count) }))
 
+const normalizeAttributes = (attributes: Record<string, FacetBucket[]> | null | undefined): AttributeFacets =>
+  Object.fromEntries(Object.entries(attributes ?? {}).map(([key, buckets]) => [key, normalizeFacet(buckets)]))
+
+// The answer of the facetable key list: a malformed entry is left out, a missing label is the key.
+const normalizeFacetable = (data: { attributes?: Partial<FacetableAttribute>[] } = {}): FacetableAttribute[] =>
+  (Array.isArray(data.attributes) ? data.attributes : [])
+    .filter(entry => typeof entry.key === 'string' && entry.key !== '')
+    .map(entry => ({ key: entry.key as string, label: text(entry.label) || (entry.key as string) }))
+
 const normalizeItem = (item: LooseItem): SearchItem => ({
   groupId: text(item.groupId),
   artifactId: text(item.artifactId),
@@ -177,6 +196,7 @@ const normalizePage = (data: LoosePage = {}): SearchPage => ({
     (['repository', 'extension', 'classifier', 'origin', 'snapshot'] as const)
       .map(name => [name, normalizeFacet(data.facets?.[name])])
   ) as Facets,
+  attributes: normalizeAttributes(data.facets?.attributes),
   indexStatus: normalizeStatus(data.indexStatus)
 })
 
@@ -242,6 +262,7 @@ const indexNotice = (status: IndexStatus): Notice | null => {
 export {
   toDate,
   normalizePage,
+  normalizeFacetable,
   normalizeFiles,
   repositoryLabel,
   rowKey,

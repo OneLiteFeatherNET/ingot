@@ -690,6 +690,13 @@ const createClient = (defaultName: string | null | undefined, defaultSecret: str
         return get(`/api/maven/search${query ? `?${query}` : ""}`)
       },
       /*
+       * The attribute keys a search can count, each with its label, ordered by key: { attributes: [{ key, label }] }.
+       * 404 when search is turned off on this instance.
+       */
+      facetableAttributes() {
+        return get("/api/maven/search/attributes/facetable")
+      },
+      /*
        * The files of one version found by the search. The coordinates are required; the repository and
        * origin filters of the search narrow the files the same way they narrowed the version.
        */
