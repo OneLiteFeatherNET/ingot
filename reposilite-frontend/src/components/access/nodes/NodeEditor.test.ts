@@ -72,7 +72,7 @@ describe('NodeEditor', () => {
       // Attached, so that the submit button of the template form really submits it.
       attachTo: document.body,
       global: { stubs: { VueFinalModal: { template: '<div><slot /></div>' } } }
-    })
+    }) as VueWrapper
     return wrapper
   }
 
@@ -505,7 +505,7 @@ describe('NodeEditor', () => {
       await showTree()
 
       const leaves = wrapper.findAll('[data-test="tree-leaf"] [data-allowed]')
-      const states = Object.fromEntries(leaves.map(leaf => [leaf.attributes('data-node'), leaf.attributes('data-allowed')]))
+      const states = Object.fromEntries<string | undefined>(leaves.map((leaf): [string, string | undefined] => [leaf.attributes('data-node') ?? '',  leaf.attributes('data-allowed')]))
       expect(states).toEqual({
         'ingot.admin.users': 'false',
         'ingot.repository.releases.read': 'true'
@@ -917,7 +917,7 @@ describe('NodeEditor artifact nodes', () => {
         ...props,
         'onUpdate:nodes': (value: unknown) => wrapper.setProps({ nodes: value })
       }
-    })
+    }) as VueWrapper
     return wrapper
   }
 
@@ -1001,7 +1001,7 @@ describe('NodeEditor artifact templates', () => {
         'onUpdate:nodes': (value: unknown) => wrapper.setProps({ nodes: value })
       },
       attachTo: document.body
-    })
+    }) as VueWrapper
     return wrapper
   }
 

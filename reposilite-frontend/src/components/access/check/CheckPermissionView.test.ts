@@ -100,7 +100,7 @@ describe('CheckPermissionView', () => {
     })
     await router.push(url)
     await router.isReady()
-    wrapper = mount(CheckPermissionView, { attachTo: document.body, global: { plugins: [router] } })
+    wrapper = mount(CheckPermissionView, { attachTo: document.body, global: { plugins: [router] } }) as VueWrapper
     await flushPromises()
   }
 

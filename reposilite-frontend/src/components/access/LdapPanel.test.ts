@@ -77,7 +77,7 @@ describe('LdapPanel', () => {
     wrapper = mount(LdapPanel, {
       attachTo: document.body,
       global: { provide: { [configurationStoreKey]: store } }
-    })
+    }) as VueWrapper
     await flushPromises()
   }
 
