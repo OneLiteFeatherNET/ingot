@@ -21,6 +21,8 @@ import { computed, inject, onMounted, ref } from 'vue'
 import MdList from '../md/MdList.vue'
 import MdListItem from '../md/MdListItem.vue'
 import MdButton from '../md/MdButton.vue'
+import MdCheckbox from '../md/MdCheckbox.vue'
+import MdFieldset from '../md/MdFieldset.vue'
 import MdDataTable from '../md/MdDataTable.vue'
 import MigrationDialog from './MigrationDialog.vue'
 import ProblemAlert from './ProblemAlert.vue'
@@ -148,22 +150,19 @@ onMounted(() => {
       Switching the clients is the last step. Work through the checklist in order.
     </p>
 
-    <fieldset class="flex flex-col gap-2">
-      <legend class="md-title-small text-on-surface">
-        Checklist
-      </legend>
-
+    <MdFieldset
+      legend="Checklist"
+      class="gap-2"
+    >
       <MdList divided>
         <MdListItem>
           <div class="flex flex-col gap-1">
-            <label class="flex items-center gap-2 md-body-large">
-              <input
-                id="migration-cutover-freeze"
-                v-model="freezeDone"
-                type="checkbox"
-              >
+            <MdCheckbox
+              id="migration-cutover-freeze"
+              v-model="freezeDone"
+            >
               Freeze Nexus writes
-            </label>
+            </MdCheckbox>
             <p class="md-body-medium text-on-surface-variant">
               In Nexus, set each repository you migrate to read-only, so no client writes to it during the switch. Ingot never
               writes to Nexus, so this is done in Nexus.
@@ -173,15 +172,13 @@ onMounted(() => {
 
         <MdListItem>
           <div class="flex flex-col gap-1">
-            <label class="flex items-center gap-2 md-body-large">
-              <input
-                id="migration-cutover-verify"
-                type="checkbox"
-                :checked="verified"
-                disabled
-              >
+            <MdCheckbox
+              id="migration-cutover-verify"
+              :model-value="verified"
+              disabled
+            >
               Verify all repositories
-            </label>
+            </MdCheckbox>
             <p class="md-body-medium text-on-surface-variant">
               Set by the newest verify job. It is ticked when every repository is VERIFIED, and it cannot be ticked by hand.
             </p>
@@ -214,21 +211,19 @@ onMounted(() => {
 
         <MdListItem>
           <div class="flex flex-col gap-1">
-            <label class="flex items-center gap-2 md-body-large">
-              <input
-                id="migration-cutover-switch"
-                v-model="switchDone"
-                type="checkbox"
-              >
+            <MdCheckbox
+              id="migration-cutover-switch"
+              v-model="switchDone"
+            >
               Switch clients
-            </label>
+            </MdCheckbox>
             <p class="md-body-medium text-on-surface-variant">
               Point each client at Ingot with the settings below, then tick this item.
             </p>
           </div>
         </MdListItem>
       </MdList>
-    </fieldset>
+    </MdFieldset>
 
     <section
       v-if="targets.length"

@@ -21,6 +21,8 @@ import { computed, inject, nextTick, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import MdAlert from '../md/MdAlert.vue'
 import MdButton from '../md/MdButton.vue'
+import MdFieldset from '../md/MdFieldset.vue'
+import MdRadio from '../md/MdRadio.vue'
 import MdTextField from '../md/MdTextField.vue'
 import PasswordField from './PasswordField.vue'
 import ProblemAlert from './ProblemAlert.vue'
@@ -186,29 +188,22 @@ const submit = async () => {
         :error-text="errors.user"
         @update:model-value="user = $event"
       />
-      <fieldset class="flex flex-col gap-2">
-        <legend class="md-label-large text-on-surface">
-          Password
-        </legend>
-        <label class="flex items-center gap-2 md-body-large">
-          <input
-            v-model="mode"
-            type="radio"
-            name="migration-password-mode"
-            value="literal"
-          >
+      <MdFieldset legend="Password">
+        <MdRadio
+          v-model="mode"
+          name="migration-password-mode"
+          value="literal"
+        >
           Enter the password
-        </label>
-        <label class="flex items-center gap-2 md-body-large">
-          <input
-            v-model="mode"
-            type="radio"
-            name="migration-password-mode"
-            value="reference"
-          >
+        </MdRadio>
+        <MdRadio
+          v-model="mode"
+          name="migration-password-mode"
+          value="reference"
+        >
           Use a secret reference
-        </label>
-      </fieldset>
+        </MdRadio>
+      </MdFieldset>
       <PasswordField
         v-if="mode === 'literal'"
         id="migration-connect-password"

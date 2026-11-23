@@ -21,6 +21,10 @@ import { createWizardStore } from '../../store/migration/wizardStore'
 import { ApiProblem } from '../../store/migration/migrationApi'
 import { planFingerprint } from '../../store/migration/gating'
 import { fakeApi, mountWith, cleanup, manualRuntime } from './testing'
+import MdButton from '../md/MdButton.vue'
+import MdCheckbox from '../md/MdCheckbox.vue'
+import MdSelect from '../md/MdSelect.vue'
+import MdTextField from '../md/MdTextField.vue'
 
 afterEach(cleanup)
 
@@ -218,5 +222,17 @@ describe('the Dry run step', () => {
     expect(api.createJob).not.toHaveBeenCalled()
     expect(api.report).toHaveBeenCalledWith(7, 'json')
     expect(wrapper.findAll('[data-test="report"] table tbody tr')).toHaveLength(3)
+  })
+
+  it('builds the report filters, the acceptance and its button from primitives', async () => {
+    const { wrapper } = await mountWith(DryRunStep, { wizard: mappedWizard(), api: finishedApi(), at: '/settings/migration/dry-run' })
+    await wrapper.find('#migration-dry-run-start').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.findAllComponents(MdSelect).length, 'the status filter is an MdSelect').toBeGreaterThan(0)
+    expect(wrapper.findAllComponents(MdTextField).some(field => field.props('type') === 'search'), 'the search is an MdTextField').toBe(true)
+    expect(wrapper.findAllComponents(MdCheckbox).length, 'the acceptance is an MdCheckbox').toBeGreaterThan(0)
+    const accept = wrapper.findAllComponents(MdButton).find(button => button.attributes('id') === 'migration-accept-report')
+    expect(accept?.props('variant'), 'the accept button is a filled MdButton').toBe('filled')
   })
 })

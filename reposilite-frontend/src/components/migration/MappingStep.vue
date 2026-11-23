@@ -20,6 +20,9 @@
 import { computed, inject, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import MdButton from '../md/MdButton.vue'
+import MdCheckbox from '../md/MdCheckbox.vue'
+import MdFieldset from '../md/MdFieldset.vue'
+import MdRadio from '../md/MdRadio.vue'
 import MdDataTable from '../md/MdDataTable.vue'
 import MdTextField from '../md/MdTextField.vue'
 import MigrationDialog from './MigrationDialog.vue'
@@ -110,8 +113,6 @@ const updateRow = (nexusName: string, patch: Partial<MappingRow>) => {
 }
 
 // The include box of a row: the checked state of the box the event came from.
-const setIncluded = (nexusName: string, event: Event) => updateRow(nexusName, { included: (event.target as HTMLInputElement).checked })
-
 const rowId = (nexusName: string) => nexusName.replace(/[^A-Za-z0-9_-]/g, '-')
 </script>
 
@@ -143,29 +144,22 @@ const rowId = (nexusName: string) => nexusName.replace(/[^A-Za-z0-9_-]/g, '-')
     </p>
 
     <template v-else>
-      <fieldset class="flex flex-col gap-2">
-        <legend class="md-title-small text-on-surface">
-          When a repository already exists in Ingot
-        </legend>
-        <label
+      <MdFieldset
+        legend="When a repository already exists in Ingot"
+        class="gap-2"
+      >
+        <MdRadio
           v-for="choice in POLICIES"
           :key="choice.value"
-          class="flex items-start gap-2 md-body-large"
+          v-model="chosen"
+          name="migration-conflict-policy"
+          :value="choice.value"
+          :data-policy="choice.value"
         >
-          <input
-            v-model="chosen"
-            type="radio"
-            name="migration-conflict-policy"
-            :value="choice.value"
-            :data-policy="choice.value"
-            class="mt-1"
-          >
-          <span>
-            <span class="block">{{ choice.label }}</span>
-            <span class="block md-body-medium text-on-surface-variant">{{ choice.detail }}</span>
-          </span>
-        </label>
-      </fieldset>
+          <span class="block">{{ choice.label }}</span>
+          <span class="block md-body-medium text-on-surface-variant">{{ choice.detail }}</span>
+        </MdRadio>
+      </MdFieldset>
 
       <MdDataTable
         data-test="mapping"
@@ -190,18 +184,14 @@ const rowId = (nexusName: string) => nexusName.replace(/[^A-Za-z0-9_-]/g, '-')
             <span v-else>Excluded: the format is not supported</span>
           </template>
           <template v-else-if="column.key === 'included'">
-            <label
+            <MdCheckbox
               v-if="cellRow(cell).supported"
-              class="flex items-center gap-2"
+              :id="`migration-include-${rowId(cellRow(cell).nexusName)}`"
+              :model-value="cellRow(cell).included"
+              @update:model-value="updateRow(cellRow(cell).nexusName, { included: $event })"
             >
-              <input
-                :id="`migration-include-${rowId(cellRow(cell).nexusName)}`"
-                type="checkbox"
-                :checked="cellRow(cell).included"
-                @change="setIncluded(cellRow(cell).nexusName, $event)"
-              >
               Include {{ cellRow(cell).nexusName }}
-            </label>
+            </MdCheckbox>
           </template>
           <template v-else>
             {{ value }}
