@@ -134,3 +134,26 @@ describe('MdListItem selected link row', () => {
     expect(rows[1].classes(), 'an unselected row keeps the list surface').not.toContain('bg-secondary-container')
   })
 })
+
+describe('MdListItem tight gap', () => {
+  it('keeps 16 pixels between the slots by default', () => {
+    const wrapper = mount(MdList, {
+      slots: { default: () => h(MdListItem, () => 'Text') }
+    })
+
+    const row = wrapper.get('[data-test="list-item-row"]').classes()
+    expect(row, 'the slots are 16 pixels apart').toContain('gap-4')
+    expect(row, 'the gap does not narrow on a phone').not.toContain('gap-2')
+  })
+
+  it('narrows the gap to 8 pixels below the medium window when the row is tight', () => {
+    const wrapper = mount(MdList, {
+      slots: { default: () => h(MdListItem, { tight: true }, () => 'Text') }
+    })
+
+    const row = wrapper.get('[data-test="list-item-row"]').classes()
+    expect(row, 'a tight row has 8 pixels between the slots on a phone').toContain('gap-2')
+    expect(row, 'a tight row has 16 pixels again from the medium window').toContain('medium:gap-4')
+    expect(row, 'a tight row does not keep the wide gap on a phone').not.toContain('gap-4')
+  })
+})

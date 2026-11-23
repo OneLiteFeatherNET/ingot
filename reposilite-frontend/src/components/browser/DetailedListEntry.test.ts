@@ -171,6 +171,18 @@ describe('DetailedListEntry md3 list spec', () => {
     return wrapper
   }
 
+  it('keeps the slots 8 pixels apart on a phone in the compact list, so the name keeps its room', () => {
+    const wrapper = mountRow({ compactMode: true })
+
+    expect(wrapper.get('[data-test="list-item-row"]').classes(), 'a compact row narrows the gap below the medium window').toContain('gap-2')
+  })
+
+  it('keeps the slots 16 pixels apart in the default list', () => {
+    const wrapper = mountRow({ compactMode: false })
+
+    expect(wrapper.get('[data-test="list-item-row"]').classes(), 'a default row keeps the wide gap').toContain('gap-4')
+  })
+
   afterEach(() => {
     mounted.splice(0).forEach(wrapper => wrapper.unmount())
   })

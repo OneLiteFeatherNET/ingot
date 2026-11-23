@@ -114,6 +114,7 @@ const onFileClick = (event: Event) => {
 <template>
   <MdListItem
     :aria-busy="busy ? 'true' : undefined"
+    :tight="compactMode"
     data-ingot-component="detailed-list-entry"
   >
     <template #leading>
