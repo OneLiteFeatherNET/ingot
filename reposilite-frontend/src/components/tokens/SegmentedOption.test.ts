@@ -55,12 +55,12 @@ describe('SegmentedOption', () => {
     expect(wrapper.find('button').classes(), 'the segment height is h-10').toContain('h-10')
   })
 
-  it('shares the track equally from sm up and never shrinks below its label on a narrow screen', () => {
+  it('shares the track equally from the medium window class up and never shrinks below its label on a narrow screen', () => {
     const classes = mountOption().find('button').classes()
 
     expect(classes, 'equal share of the track').toEqual(expect.arrayContaining(['flex-1', 'basis-0']))
     expect(classes, 'a narrow row wraps rather than squeezing the label').toContain('min-w-max')
-    expect(classes, 'one row from sm up shares the track equally').toContain('sm:min-w-0')
+    expect(classes, 'one row from the medium window class up shares the track equally').toContain('medium:min-w-0')
   })
 
   it('fills the selected segment inside the track, with no ring of its own', () => {
