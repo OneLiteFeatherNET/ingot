@@ -4126,6 +4126,12 @@ export interface paths {
                     page?: string;
                     /** @description Groups per page, 1 to 100 (default 20) */
                     size?: string;
+                    /** @description key:value filter on a declared filterable attribute, repeatable; an OR within a key, an AND across keys. At most 4 keys and 16 values per key. */
+                    attribute?: string;
+                    /** @description key:asc or key:desc, sorts by one declared sortable attribute; rows without a value sort last */
+                    attributeSort?: string;
+                    /** @description Comma-separated declared facetable attribute keys to count, at most 8 */
+                    attributeFacets?: string;
                 };
                 header?: never;
                 path?: never;
@@ -4142,7 +4148,7 @@ export interface paths {
                         "application/json": components["schemas"]["ArtifactSearchResponse"];
                     };
                 };
-                /** @description Invalid parameter or result window exceeded. The message names the parameter. */
+                /** @description Invalid parameter or result window exceeded. The message names the parameter. An attribute that is not declared for its use has the problem type urn:ingot:problem:undeclared-attribute, a feature the search backend does not support urn:ingot:problem:unsupported-search-capability. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -4158,6 +4164,52 @@ export interface paths {
                 };
                 /** @description Statement timeout, grant set too large for search, or the search backend is not available. Retry-After is set. */
                 503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/maven/search/attributes/facetable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the attribute keys a search can count
+         * @description The keys that an artifact enricher declared facetable, each with its label, ordered by key. The list is built from the declarations only: no search backend is asked and no attribute value is read. It is empty when no enricher declares a facetable key.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FacetableAttributesResponse"];
+                    };
+                };
+                /** @description Search is turned off on this instance */
+                404: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -6027,6 +6079,13 @@ export interface components {
             count: number;
             value: string;
         };
+        FacetableAttribute: {
+            key: string;
+            label: string;
+        };
+        FacetableAttributesResponse: {
+            attributes: components["schemas"]["FacetableAttribute"][];
+        };
         FactorCountsDto: {
             /** Format: int32 */
             authenticator?: number;
@@ -6566,6 +6625,9 @@ export interface components {
         /** @enum {string} */
         SearchBackendState: "AVAILABLE" | "NOT_INSTALLED" | "REFUSED" | "OPEN_FAILED" | "DOWN" | "CLUSTER_MISMATCH";
         SearchFacets: {
+            attributes?: {
+                [key: string]: components["schemas"]["FacetBucket"][];
+            } | null;
             classifier: components["schemas"]["FacetBucket"][];
             extension: components["schemas"]["FacetBucket"][];
             origin: components["schemas"]["FacetBucket"][];
