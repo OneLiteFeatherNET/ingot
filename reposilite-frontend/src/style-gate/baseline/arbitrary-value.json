@@ -16,11 +16,6 @@
   },
   {
     "file": "src/components/audit/AuditEventRow.vue",
-    "match": "grid-cols-[max-content_1fr]",
-    "count": 1
-  },
-  {
-    "file": "src/components/audit/AuditEventRow.vue",
     "match": "grid-cols-[minmax(0,1fr)]",
     "count": 1
   },

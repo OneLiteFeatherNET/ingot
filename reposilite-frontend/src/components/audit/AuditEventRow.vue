@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router'
 import { actionLabelOf, actorLabelOf, actorLocationOf, targetLabelOf, targetLocationOf } from './auditQuery'
 import type { AuditEvent } from './auditQuery'
 import MdCard from '../md/MdCard.vue'
+import MdKeyValueList from '../md/MdKeyValueList.vue'
 
 /*
  * One audited event. The row is dense: time, actor, action, target and result sit in one line on a
@@ -30,6 +31,12 @@ const actorLink = computed(() => actorLocationOf(props.event))
 const target = computed(() => targetLabelOf(props.event))
 const targetLink = computed(() => targetLocationOf(props.event))
 const detailsText = computed(() => (props.event.details ? JSON.stringify(props.event.details, null, 2) : null))
+const facts = computed(() => [
+  { label: 'Event id', value: String(props.event.id) },
+  { label: 'Time (UTC)', value: props.event.timestamp },
+  { label: 'Repository', value: props.event.repository || '-' },
+  { label: 'Path', value: props.event.path || '-' }
+])
 const attempts = computed(() => (props.event.occurrences > 1 ? `${props.event.occurrences} attempts` : null))
 </script>
 
@@ -116,24 +123,7 @@ const attempts = computed(() => (props.event.occurrences > 1 ? `${props.event.oc
       tone="container"
       class="mt-3"
     >
-      <dl class="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 md-body-small text-on-surface-variant">
-        <dt>Event id</dt>
-        <dd class="text-on-surface">
-          {{ event.id }}
-        </dd>
-        <dt>Time (UTC)</dt>
-        <dd class="break-all text-on-surface">
-          {{ event.timestamp }}
-        </dd>
-        <dt>Repository</dt>
-        <dd class="break-all text-on-surface">
-          {{ event.repository || '-' }}
-        </dd>
-        <dt>Path</dt>
-        <dd class="break-all text-on-surface">
-          {{ event.path || '-' }}
-        </dd>
-      </dl>
+      <MdKeyValueList :items="facts" />
       <pre
         v-if="detailsText"
         class="mt-3 overflow-x-auto whitespace-pre-wrap break-all rounded-corner-small bg-surface-container-lowest p-3 md-body-small text-on-surface"

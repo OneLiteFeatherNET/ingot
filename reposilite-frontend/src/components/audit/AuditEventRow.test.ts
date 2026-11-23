@@ -1,6 +1,8 @@
+import type { Component } from 'vue'
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
+import MdKeyValueList from '../md/MdKeyValueList.vue'
 import AuditEventRow from './AuditEventRow.vue'
 import type { AuditEvent } from './auditQuery'
 
@@ -131,6 +133,21 @@ describe('AuditEventRow details', () => {
 
     expect(row.find('pre').text()).toContain('"token": "deploy-bot"')
     expect(row.find('button').attributes('aria-expanded')).toBe('true')
+  })
+
+  it('lists the event facts in the shared key-value list when the row is open', async () => {
+    const row = await mountRow({ event: event({ repository: 'releases', path: '/a/b' }), expanded: true })
+
+    const list = row.findComponent(MdKeyValueList as Component)
+    expect(list.exists()).toBe(true)
+    expect(list.findAll('dt').map(term => term.text())).toEqual(['Event id', 'Time (UTC)', 'Repository', 'Path'])
+    expect(list.findAll('dd').map(detail => detail.text())).toContain('releases')
+  })
+
+  it('shows a dash for a repository and a path the event does not carry', async () => {
+    const row = await mountRow({ event: event({ repository: undefined, path: undefined }), expanded: true })
+
+    expect(row.findComponent(MdKeyValueList as Component).findAll('dd').slice(-2).map(detail => detail.text())).toEqual(['-', '-'])
   })
 
   it('reports the toggle with the id of its event', async () => {
