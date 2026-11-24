@@ -12,7 +12,7 @@
 # moving part.
 services:
   dashboard:
-    image: ghcr.io/onelitefeathernet/ingot-dashboard:1.1.1 # x-release-please-version
+    image: ghcr.io/onelitefeathernet/ingot-dashboard:1.2.0 # x-release-please-version
     #
     # To build from sources:
     #
@@ -39,7 +39,7 @@ services:
       - no-new-privileges:true
 
   server:
-    image: ghcr.io/onelitefeathernet/ingot:1.1.1 # x-release-please-version
+    image: ghcr.io/onelitefeathernet/ingot:1.2.0 # x-release-please-version
     #
     # To build from sources:
     #
