@@ -210,7 +210,6 @@ The dashboard animates a change of page, a menu, a dialog and a few other surfac
 | `run-now-dialog` | experimental | `src/components/maintenance/RunNowDialog.vue` | none | `error` | none |
 | `search-bar` | experimental | `src/components/search/SearchBar.vue` | none | none | none |
 | `search-filters` | experimental | `src/components/search/SearchFilters.vue` | none | none | none |
-| `search-rebuild-note` | experimental | `src/components/settings/SearchRebuildNote.vue` | none | none | none |
 | `search-result-row` | experimental | `src/components/search/SearchResultRow.vue` | none | none | none |
 | `search-view` | experimental | `src/components/search/SearchView.vue` | none | `loading` | none |
 | `second-factors-card` | experimental | `src/components/account/SecondFactorsCard.vue` | none | none | none |
