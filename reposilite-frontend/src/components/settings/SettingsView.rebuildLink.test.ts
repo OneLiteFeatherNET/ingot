@@ -80,41 +80,23 @@ const setup = async () => {
   return wrapper
 }
 
-const REBUILD_TEXT = 'Full rebuild. Rebuilding drops and refills the whole index from storage. It runs on the Maintenance page, where running jobs are shown.'
-
-// The panel of the General section: the tab that holds the rebuild note and the loose fields of the page.
+// The panel of the General section: the tab that holds the loose fields of the page.
 const generalPanel = (page: VueWrapper) => {
   const general = page.findAll('[role="tab"]').find(tab => tab.text() === 'General')
   return document.getElementById(general!.attributes('aria-controls')!)!
 }
 
-describe('the rebuild of the search index on the Search index page', () => {
-  it('explains what a full rebuild does and where it runs, in the General section', async () => {
-    const page = await setup()
-
-    expect(generalPanel(page).textContent).toContain(REBUILD_TEXT)
-  })
-
-  it('offers the rebuild as an Open Maintenance link inside the General section', async () => {
+describe('the General section of the Search index page', () => {
+  it('shows no Open Maintenance link, since the rebuild lives on the Maintenance page', async () => {
     const page = await setup()
 
     const links = page.findAll('a').filter(anchor => anchor.text().trim() === 'Open Maintenance')
-    expect(links, 'one link named Open Maintenance').toHaveLength(1)
-    expect(generalPanel(page).contains(links[0].element), 'the link is in the General section').toBe(true)
+    expect(links, 'no link named Open Maintenance').toHaveLength(0)
   })
 
-  it('leads the Open Maintenance link to the Index tab of Maintenance, where the rebuild runs', async () => {
+  it('shows no text about a full rebuild', async () => {
     const page = await setup()
 
-    const [link] = page.findAll('a').filter(anchor => anchor.text().trim() === 'Open Maintenance')
-    expect(link.attributes('href')).toBe('/repo/maintenance?tab=index')
-  })
-
-  it('draws no rebuild link in the page header, so the link has its context beside it', async () => {
-    const page = await setup()
-
-    const header = page.get('header')
-    expect(header.findAll('a').map(link => link.text().trim())).not.toContain('Rebuild now on Maintenance')
-    expect(header.findAll('a').map(link => link.text().trim())).not.toContain('Open Maintenance')
+    expect(generalPanel(page).textContent).not.toContain('Full rebuild')
   })
 })
