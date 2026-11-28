@@ -707,16 +707,18 @@ jobs:
               print("No canary results were produced. See the job log.")
           PY
 
-          changed=$(git diff --name-only "$BASE_SHA" HEAD -- reposilite-plugins/checksum-plugin/src/main reposilite-plugins/migration-plugin/src/main)
-          if [ -n "$changed" ]; then
-            {
-              echo
-              echo "## Bundled plugin sources changed"
-              echo
-              echo "This pull request edits the sources of a bundled plugin. An edit there can hide a break of the plugin API, so read the binary report above closely."
-              echo
-              echo "$changed" | sed 's/^/- `/; s/$/`/'
-            } >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$BASE_SHA" ]; then
+            changed=$(git diff --name-only "$BASE_SHA" HEAD -- reposilite-plugins/checksum-plugin/src/main reposilite-plugins/migration-plugin/src/main)
+            if [ -n "$changed" ]; then
+              {
+                echo
+                echo "## Bundled plugin sources changed"
+                echo
+                echo "This pull request edits the sources of a bundled plugin. An edit there can hide a break of the plugin API, so read the binary report above closely."
+                echo
+                echo "$changed" | sed 's/^/- `/; s/$/`/'
+              } >> "$GITHUB_STEP_SUMMARY"
+            fi
           fi
 
       - name: "Write the Ingot plugin API to the job summary"
