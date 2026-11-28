@@ -22,6 +22,6 @@ Prerequisite: `add-search-attribute-facets` code merged, and Q1 of the design se
 
 ## 4. Open the code pull request
 
-- [ ] 4.1 Open the code pull request `feat(ui): filter the search by plugin attributes` against `main` with the label `ci:e2e`, the body of
+- [x] 4.1 Open the code pull request `feat(ui): filter the search by plugin attributes` against `main` with the label `ci:e2e`, the body of
   `.github/PULL_REQUEST_TEMPLATE.md` and screenshots at 320, 600 and 1440 pixels. It has no file under `openspec/`, no session link and no
   co-author.

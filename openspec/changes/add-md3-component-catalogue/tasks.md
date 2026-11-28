@@ -189,11 +189,11 @@ earlier ones.
   the changed DESIGN.md, the registry and the source files. Verify: the validation passes and the grep prints nothing.
 - [x] 5.6 Grep `reposilite-frontend/src` and the plugin extension points for `CardMenu` and `selectTab`. Verify: the result is recorded
   in the pull request. The alias of task 3.20 is kept whatever the result is.
-- [ ] 5.7 Grep `reposilite-frontend/src/components/md/` for `<style` and for class-string props. Verify: no match.
+- [x] 5.7 Grep `reposilite-frontend/src/components/md/` for `<style` and for class-string props. Verify: no match.
 
 ## 6. Pull request (no commit)
 
-- [ ] 6.1 Open the code pull request under the title `refactor(ui): add the md3 component catalogue`, from the remote main branch that
+- [x] 6.1 Open the code pull request under the title `refactor(ui): add the md3 component catalogue`, from the remote main branch that
   already contains the merged proposal and the merged changes `refactor-md3-token-utilities` and `add-ui-style-gate`, with no file under `openspec/`. Fill the
   repository's pull request template, list the pixel-identical swaps that were done and the ones that were held back, attach the
   before and after screenshots and the catalogue screenshots, and state that nothing breaks.

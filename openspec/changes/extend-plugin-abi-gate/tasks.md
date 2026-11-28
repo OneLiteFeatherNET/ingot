@@ -24,7 +24,7 @@ Each code pull request stays under about 400 changed lines, excluding tests and 
   with a message that names the missing package.
 - [x] 2.2 `build(plugin)`: add `ingotPluginApiPackages` with the packages of the design, and `ingotExperimentalPackages` with the experimental
   packages named in the documentation. No task is registered yet.
-- [ ] 2.3 Verify the Ingot baseline (design Q1): run `./gradlew --build-cache :reposilite-backend:dependencies --configuration` on a detached
+- [x] 2.3 Verify the Ingot baseline (design Q1): run `./gradlew --build-cache :reposilite-backend:dependencies --configuration` on a detached
   configuration that declares `net.onelitefeather.ingot:ingot:1.1.1`, and record in the pull request whether it resolves from
   `repo.onelitefeather.dev`. If it does not, choose the first release that does, and set `ingotBaseline` to it in task 3.1.
 
@@ -62,7 +62,7 @@ Each code pull request stays under about 400 changed lines, excluding tests and 
 - [x] 5.1 Open code pull requests 1 and 2 under the titles `test(plugin): check the ingot package lists against the plugin api docs` and
   `build(plugin): report the ingot plugin api against the last release`, each from a branch of the remote main branch, each with no file under
   `openspec/`.
-- [ ] 5.2 Open code pull request 3, last, under the title `ci(plugin): cover the ingot plugin api packages in the abi gate`. Read
+- [x] 5.2 Open code pull request 3, last, under the title `ci(plugin): cover the ingot plugin api packages in the abi gate`. Read
   `.github/PULL_REQUEST_TEMPLATE.md` and fill its sections (type `ci`). The description tells the story of a plugin author who builds against an
   Ingot interface that changed, and of a reviewer who sees the change in the job summary before the release. It carries no session link and no
   attribution line. Verify: `gh pr view --json title` shows the exact title, the commit-style hook accepts the title and every commit, and the

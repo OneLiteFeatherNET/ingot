@@ -55,7 +55,7 @@ Each code pull request stays under about 400 changed lines, excluding tests and 
   test that asserts the message through a captured logger.
 - [x] 4.6 `docs(frontend)`: the route in `docs/gitbook/references/http-api/dashboard-pages.md` and the "Who can open it" row for the reader
   route, the sign-in rule and the Browse entry in the same page.
-- [ ] 4.7 Verify in a browser at 320, 600 and 1440 px that a reader page has no horizontal scroll, and that the Browse heading appears
+- [x] 4.7 Verify in a browser at 320, 600 and 1440 px that a reader page has no horizontal scroll, and that the Browse heading appears
   only with a reader page. Screenshots go to the `pr-screenshots` branch and are linked in the pull request.
 
 ## 5. Pull request

@@ -129,7 +129,7 @@ Before any code: `MdPage`, `MdPageHeader`, `MdBreadcrumb` and `MdListDetail` com
 
 ## 7. Pull request
 
-- [ ] 7.1 Open the code pull request under the title `fix(ui): separate surfaces and align page headers and breadcrumbs`, from the remote
+- [x] 7.1 Open the code pull request under the title `fix(ui): separate surfaces and align page headers and breadcrumbs`, from the remote
   main branch that already contains the merged proposal, the merged `refactor-md3-token-utilities`, `add-ui-style-gate` and
   `add-md3-component-catalogue`,
   with no file under `openspec/`. Fill `.github/PULL_REQUEST_TEMPLATE.md` and put the screenshots and the measured values of 6.1 and
