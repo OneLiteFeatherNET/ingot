@@ -63,7 +63,7 @@ an injected clock in the step-up helper. Every test has a fresh fixture and asse
 
 ## 8. Pull request
 
-- [ ] 8.1 Open the code pull request with the title `feat(ui): add second factor steps to the dashboard sign-in and account
+- [x] 8.1 Open the code pull request with the title `feat(ui): add second factor steps to the dashboard sign-in and account
   page`, after the server signal of section 9 and the code pull request of `add-multi-factor-authentication` are merged, and link it. Verify: the title passes
   the commit style hook and carries no attribution line.
 

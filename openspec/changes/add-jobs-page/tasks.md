@@ -80,6 +80,6 @@ dark, before and after the change.
 
 ## 5. Open the code pull request
 
-- [ ] 5.1 Open the code pull request `feat(jobs): add a jobs page for background runs` against `main`, with the body of the pull request
+- [x] 5.1 Open the code pull request `feat(jobs): add a jobs page for background runs` against `main`, with the body of the pull request
   template (`.github/PULL_REQUEST_TEMPLATE.md`), the screenshots of 320, 600 and 1440 pixels, and the list of the commits per type. Its
   body names no session link and no co-author. Verify: `gh pr view` shows the exact title, and the body has no em or en dash.
